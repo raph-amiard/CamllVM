@@ -28,7 +28,7 @@ private:
 
 };
 
-template <typename T> void Read(std::ifstream& FileStream, T& buffer) {
+template <typename T> inline void Read(std::ifstream& FileStream, T& buffer) {
     FileStream.read((char*)&buffer, sizeof(T));
 }
 
