@@ -4,7 +4,7 @@ INCLUDE=include
 BIN=bin
 
 CCFLAGS= -I${INCLUDE} -std=c++0x
-CC=clang++ ${CCFLAGS}
+CC=c++ ${CCFLAGS}
 
 zamreader:
 	${CC} -c -o ${OBJ}/ZamReader.o ${SRC}/ZamReader.cpp 
