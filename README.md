@@ -7,3 +7,8 @@ Building the project
 --------------------
 
 The default makefile will use your default c++ compiler. It depends on boost for integer types, so make sure you have boost dev installed.
+
+What does it do for the moment
+------------------------------
+
+Parses Ocaml executable file format, and reads instructions.
