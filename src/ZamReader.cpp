@@ -1,4 +1,5 @@
 #include <ZamReader.hpp>
+#include <Marshal.hpp>
 #include <EndianUtils.hpp>
 
 using namespace std;
@@ -8,12 +9,12 @@ struct FileSection {
     uint32_t Size;
 };
 
-void readLittleEndian(ifstream& FileStream, uint32_t& Dest) {
+template <typename T> inline void readLittleEndian(ifstream& FileStream, T& Dest) {
     read(FileStream, Dest);
     Dest = toLittleEndian(Dest);
 }
 
-void readBigEndian(ifstream& FileStream, uint32_t& Dest) {
+template <typename T> inline void readBigEndian(ifstream& FileStream, T& Dest) {
     read(FileStream, Dest);
     Dest = toBigEndian(Dest);
 }
@@ -54,28 +55,68 @@ ZamFile::ZamFile(const char* Filename) {
     Pos = 20;
 
     for (FileSection fs : SectionsList) {
+
         FileStream.seekg(Pos, ios::beg);
+
+        cout << fs.Name << endl;
+
         if (string("CODE") == fs.Name) {
             readInstructions(FileStream, fs.Size);
         } else if (string("DATA") == fs.Name) {
-            cout << "DATA " << Pos << endl;
+            readData(FileStream, fs.Size);
+        } else if (string("PRIM") == fs.Name) {
+            readStrings(FileStream, fs.Size);
         }
+
         Pos += fs.Size;
     }
 
-    printInstructions();
+    //printInstructions();
+
+}
+
+void ZamFile::readStrings(ifstream& FileStream, uint32_t Size) {
+    char Chr;
+    do {
+        read(FileStream, Chr);
+
+        if (Chr) printf("%c", Chr);
+        else printf("\n");
+
+        Size--;
+    } while (Size > 0);
+}
+
+void ZamFile::readData(ifstream& FileStream, uint32_t Size) {
+
+    uint32_t MagicNum, BlockLen, NumObjects, Size32, Size64;
+
+    // Check magic number
+    readLittleEndian(FileStream, MagicNum);
+    if (MagicNum != MAGIC_NUMBER)
+        throw logic_error("Not a valid ocaml marshaled data section");
+
+    // Read header values
+    readLittleEndian(FileStream, BlockLen);
+    readLittleEndian(FileStream, NumObjects);
+    readLittleEndian(FileStream, Size32);
+    readLittleEndian(FileStream, Size64);
+
+    auto objTable = new vector<Value*>();
 
 }
 
 void ZamFile::readInstructions(ifstream& FileStream, uint32_t Size) {
-    Instruction Inst;
+    ZInstruction Inst;
+
     while (Size > 0) {
         // Read instruction
         // And then fill arguments values
         readBigEndian(FileStream, Inst.OpNum);
-        for (int i = 0; i < Inst.Arity(); i++) {
+
+        for (int i = 0; i < Inst.Arity(); i++)
             readBigEndian(FileStream, Inst.Args[i]);
-        }
+
         Size -= 4 + (4 * Inst.Arity());
         Instructions.push_back(Inst);
     }

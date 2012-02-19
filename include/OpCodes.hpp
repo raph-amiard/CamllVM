@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <map>
 #include <boost/cstdint.hpp>
 
 /**
@@ -192,13 +193,21 @@ static OpCode AllOpCodes[146] = {
 
 };
 
+enum InstrAnnotation {
+    NOTHING, FUNCTION_START, FUNCTION_RETURN, BLOCK_START
+};
+
+std::map<int, int>& getJumpInsts();
+
 /**
  * Struct representing a concrete instruction in a bytecode file
  */
-struct Instruction {
+struct ZInstruction {
 public:
     uint32_t OpNum;
     int32_t Args[4];
+    int32_t idx;
+    uint32_t Annotation;
 
     inline unsigned short Arity() {
         return AllOpCodes[OpNum].Arity;
@@ -208,12 +217,62 @@ public:
         return AllOpCodes[OpNum].Name;
     }
 
-    inline void Print() {
+    inline void Print(bool LineNums = false) {
+        if (LineNums) std::cout << idx << ": ";
         std::cout << Name() << " ";
         for (int i = 0; i < Arity(); i++) {
             std::cout << Args[i] << " ";
         }
         std::cout << std::endl;
+    }
+
+    inline bool isJumpInst() {
+        switch (OpNum) {
+            case BRANCH:
+            case BRANCHIF:
+            case BRANCHIFNOT:
+            case BEQ:
+            case BNEQ:
+            case BLTINT:
+            case BLEINT:
+            case BGTINT:
+            case BGEINT:
+            case BULTINT:
+            case BUGEINT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    inline bool isCondJump() {
+        return isJumpInst() && OpNum != BRANCH;
+    }
+
+    inline bool isUncondJump() {
+        return OpNum == BRANCH;
+    }
+
+    inline bool isClosure() {
+        return OpNum == CLOSURE || OpNum == CLOSUREREC;
+    }
+
+    inline bool isReturn() {
+        switch (OpNum) {
+            case APPTERM:
+            case APPTERM1:
+            case APPTERM2:
+            case APPTERM3:
+            case RETURN:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    inline int getDestIdx() {
+        auto JumpInsts = getJumpInsts();
+        return Args[JumpInsts[OpNum]];
     }
 
 };

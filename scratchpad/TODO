@@ -1,0 +1,29 @@
+TODO
+====
+
+- Essayer d'utiliser le mécanisme de deserialisation de Ocaml
+    probleme principal : les fermetures (pointeurs de code)
+    peut etre réutilisé aussi la lecture de code et adapter.
+
+- Coder la transformation (création de CFG)
+- Generer IR LLVM
+
+Garbage collection
+------------------
+
+Chercher toutes les fonctions qui utilisent un mécanisme d'allocation mémoire dans les pervasives ocaml.
+
+- Pour l'instant juste Small_alloc, une macro
+
+si que small_alloc c'est simple -> plugger une autre macro
+
+Pointeur VMKit
+--------------
+
+On a un espace (couleur) dans le tag du block
+    A prior c'est fait pour le GC donc on peut l'utiliser
+
+Probleme : Moins de 32b
+Solution : Indexer les pointeurs de VM dans un tableau
+
+-Regarder comment les fermetures sont déserialisées

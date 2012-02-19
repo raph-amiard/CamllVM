@@ -1,4 +1,9 @@
+#ifndef ENDIANUTILS_HPP
+#define ENDIANUTILS_HPP
+
 #include <boost/cstdint.hpp>
+#include <fstream>
+#include <iostream>
 
 inline bool isBigEndian() {
     union {
@@ -8,9 +13,9 @@ inline bool isBigEndian() {
     return Bint.c[0] == 1;
 }
 
-static int IsBigEndian = isBigEndian()
+static int IsBigEndian = isBigEndian();
 
-inline uint32_t swapEndianness(uint32_t in) {
+template <typename T> inline T swapEndianness(T in) {
     unsigned char b1, b2, b3, b4;
 
     b1 = in & 255;
@@ -18,13 +23,15 @@ inline uint32_t swapEndianness(uint32_t in) {
     b3 = ( in >> 16 ) & 255;
     b4 = ( in >> 24 ) & 255;
 
-    return ((int)b1 << 24) + ((int)b2 << 16) + ((int)b3 << 8) + b4;
+    return ((T)b1 << 24) + ((T)b2 << 16) + ((T)b3 << 8) + b4;
 }
 
-inline uint32_t toLittleEndian(uint32_t in) {
+template <typename T> inline T toLittleEndian(T in) {
     return isBigEndian() ? in : swapEndianness(in);
 }
 
-inline uint32_t toBigEndian(uint32_t in) {
+template <typename T> inline T toBigEndian(T in) {
     return isBigEndian() ? swapEndianness(in) : in;
 }
+
+#endif

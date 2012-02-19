@@ -12,14 +12,19 @@
 #include <boost/cstdint.hpp>
 #include <iostream>
 #include <fstream>
-#include <OpCodes.hpp>
+#include <memory>
 
+#include <OpCodes.hpp>
+#include <Value.hpp>
+
+#define MAGIC_NUMBER 0x8495A6BE
 #define MAGIC_STRING "Caml1999X008"
 #define MAGIC_STRING_SIZE 12
 
 class ZamFile {
 public:
-    std::vector<Instruction> Instructions;
+    std::vector<ZInstruction> Instructions;
+    std::vector<Value*> GlobalData;
 
     ZamFile(const char* Filename);
     inline void printInstructions() {
@@ -28,6 +33,8 @@ public:
 
 private:
     void readInstructions(std::ifstream& FileStream, uint32_t Size);
+    void readData(std::ifstream& FileStream, uint32_t Size);
+    void readStrings(std::ifstream& FileStream, uint32_t Size);
 
 };
 

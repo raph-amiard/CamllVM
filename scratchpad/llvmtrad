@@ -1,0 +1,62 @@
+// e.ml
+
+start:
+    goto main
+
+function func1 (char* arg1) {
+    acc = arg1;
+    char* var1 = acc;
+    acc = env[2];
+    char* var2 = acc;
+    acc = env[1];
+    char* var3 = acc;
+    acc = var3 + acc;
+    acc = var2 + acc;
+    return acc;
+}
+
+function func2 (char* arg1, char* arg2) {
+    acc = arg1;
+    char* var1 = acc;
+    acc = arg2;
+    char* var2 = acc;
+
+    char* closureblock = makeblock(2)
+    closureblock[0] = var1;
+    closureblock[1] = var2;
+
+    acc = makeclosure(func1, closureblock);
+
+    return acc;
+}
+
+main:
+    acc = makeclosure(func2)
+    char* var1 = acc;
+    acc = 15;
+    char* var2 = acc;
+    acc = 12;
+    char* var3 = acc;
+    acc = var1;
+    acc = func2(var2, var3)
+    char* var4 = acc; // Closure
+    acc = 10;
+    char* var5 = acc;
+    acc = var4;
+    var args = makeargs(1);
+    args[0] = var3;
+    apply(var4, args);
+
+// d.ml
+
+start:
+    goto main
+
+function func1 (char* arg1) {
+    acc = 1;
+    var1 = acc;
+    acc = env[1];
+    var args = makeargs(1);
+    args[0] = var1;
+    return apply(acc, args);
+}
