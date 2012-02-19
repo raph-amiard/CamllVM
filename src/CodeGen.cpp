@@ -7,7 +7,6 @@
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/IRReader.h"
 
 extern "C" {
     #include <ocaml_runtime/mlvalues.h>
@@ -16,6 +15,20 @@ extern "C" {
 }
 
 #include <stdexcept>
+
+/* GC interface 
+ * Those macros are empty for the moment 
+ * But need to be defined if we want to use Alloc_small
+ */
+
+#define Setup_for_gc \
+  {}
+#define Restore_after_gc \
+  {}
+#define Setup_for_c_call \
+  {}
+#define Restore_after_c_call \
+  {}
 
 using namespace std;
 using namespace llvm;
@@ -33,8 +46,10 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
     deque<ZInstruction*> QInstructions;
     deque<ZInstruction*> MainBlockInsts;
 
+    // If last inst is negative, it will trim the last X instructions
     if (LastInst == 0) LastInst = OriginalInstructions->size() - 1;
     else if (LastInst < 0) LastInst = OriginalInstructions->size() + LastInst;
+
     // Create a queue of all instructions
     for (int i = FirstInst; i <= LastInst; i++) {
         QInstructions.push_back(&OriginalInstructions->at(i));
@@ -58,7 +73,6 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
 
     // Create the main function, based on the remaining instructions
     Module->MainFunction = new GenFunction(MAIN_FUNCTION_ID, Module);
-    // LOL NOOB
     Module->MainFunction->Arity = 0;
     initFunction(Module->MainFunction, &MainBlockInsts);
 
@@ -105,11 +119,11 @@ void GenModuleCreator::generateFunction(deque<ZInstruction*>* Instructions) {
 
 }
 
-void GenModuleCreator::initFunction(GenFunction* Function, std::deque<ZInstruction*>* Instructions) {
+void GenModuleCreator::initFunction(GenFunction* Function, deque<ZInstruction*>* Instructions) {
     genBlocks(Function, Instructions);
 }
 
-void GenModuleCreator::genBlocks(GenFunction* Function, std::deque<ZInstruction*>* Instructions) {
+void GenModuleCreator::genBlocks(GenFunction* Function, deque<ZInstruction*>* Instructions) {
 
     // The first instruction is the beginning of a block
     Instructions->at(0)->Annotation = BLOCK_START;
@@ -206,6 +220,7 @@ Value* GenBlock::getStackAt(int n) {
             return PreviousBlocks.front()->Stack[n - Stack.size()];
         } else {
             // TODO: Make the PHI
+            return nullptr;
         }
     } else {
         return Stack[n];
@@ -264,8 +279,6 @@ Value* GenBlock::ConstInt(uint64_t val) {
 }
 
 void GenBlock::makeApply(int n) {
-
-    cout << "IN MAKE APPLY\n";
 
     ClosureInfo CI = Function->ClosuresFunctions[Accu];
 
