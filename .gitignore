@@ -1,3 +1,7 @@
 .clang_complete
 *.swp
 *.swo
+*.o
+*.a
+*.so
+*.s

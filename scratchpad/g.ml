@@ -1,4 +1,5 @@
+let fn a b = a + b;;
 
-let fn a b = if a < 5 then a + b else a - b;;
+let fn2 a b = (fn a b) + b;;
 
-fn 12 15
+fn2 15 16
