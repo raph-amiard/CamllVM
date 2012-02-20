@@ -78,8 +78,6 @@ void convertCodeOffsets(vector<ZInstruction>& Instructions) {
 
 void annotateNodes(vector<ZInstruction>& Instructions) {
 
-    int JumpArgPos;
-
     for (ZInstruction& Inst: Instructions)
         if (Inst.isClosure()) {
             Instructions[Inst.getDestIdx()].Annotation = FUNCTION_START;

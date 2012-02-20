@@ -3,10 +3,11 @@ TODO
 
 - Essayer d'utiliser le mécanisme de deserialisation de Ocaml
     probleme principal : les fermetures (pointeurs de code)
-    peut etre réutilisé aussi la lecture de code et adapter.
+    peut etre réutilisé aussi la lecture de code et adapter. DONE
 
-- Coder la transformation (création de CFG)
-- Generer IR LLVM
+- Coder la transformation (création de CFG) DONE
+- Generer IR LLVM 
+- Apply :
 
 Garbage collection
 ------------------

@@ -37,7 +37,7 @@ extern "C" {
     //
     // It is compatible with the regular ocaml runtime's closure layout 
 
-    inline char* makeClosure(int32_t NVars, int32_t* FPtr, int32_t NbArgs, int32_t NbSuppliedArgs) {
+    char* makeClosure(int32_t NVars, int32_t* FPtr, int32_t NbArgs, int32_t NbSuppliedArgs) {
         value Closure;
         int BlockSize = 3 + NVars + NbArgs;
         Alloc_small(Closure, BlockSize, Closure_tag);

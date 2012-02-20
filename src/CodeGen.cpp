@@ -7,6 +7,7 @@
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/IRReader.h"
 
 extern "C" {
     #include <ocaml_runtime/mlvalues.h>
@@ -212,7 +213,7 @@ std::string GenBlock::name() {
     return ss.str();
 }
 
-Value* GenBlock::getStackAt(int n) {
+Value* GenBlock::getStackAt(size_t n) {
     if (n >= Stack.size()) {
         if (PreviousBlocks.size() == 0)
             throw std::logic_error("Bad stack access !");
@@ -278,13 +279,13 @@ Value* GenBlock::ConstInt(uint64_t val) {
     );
 }
 
-void GenBlock::makeApply(int n) {
+void GenBlock::makeApply(size_t n) {
 
     ClosureInfo CI = Function->ClosuresFunctions[Accu];
 
     if (CI.IsBare && CI.LlvmFunc->arg_size() == n) {
         vector<Value*> ArgsV;
-        for (int i = 0; i < n; i++) {
+        for (size_t i = 0; i < n; i++) {
             ArgsV.push_back(castToPtr(getStackAt(i)));
         }
         Accu = Builder->CreateCall(CI.LlvmFunc, ArgsV);
@@ -293,7 +294,7 @@ void GenBlock::makeApply(int n) {
 
 void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
-    Value *TmpVal, *TmpVal2;
+    Value *TmpVal;
 
     switch (Inst->OpNum) {
 
@@ -355,11 +356,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case CLOSURE:{
-            auto MakeClos = getMakeClosure();
-            auto ClosSetVar = Function->Module->TheModule->getFunction("closureSetVar");
-
-            if (MakeClos == 0)
-                throw std::logic_error("LOL NOOB");
+            auto MakeClos = getFunction("makeClosure");
+            auto ClosSetVar = getFunction("closureSetVar");
 
             // Create pointer to dest function
             auto DestGenFunc = Function->Module->Functions[Inst->Args[1]];
@@ -549,7 +547,11 @@ void GenFunction::generateApplierFunction() {
 GenModule::GenModule() {
 
     InitializeNativeTarget();
-    TheModule = new Module("testmodule", getGlobalContext());
+    SMDiagnostic Diag;
+    TheModule = ParseIRFile("bin/StdLib.ll", Diag, getGlobalContext()); //new Module("testmodule", getGlobalContext());
+    for (Function& Func : TheModule->getFunctionList()) {
+        Func.dump();
+    }
     Builder = new IRBuilder<>(getGlobalContext());
     string ErrStr;
     ExecEngine = EngineBuilder(TheModule).setErrorStr(&ErrStr).create();
@@ -585,76 +587,7 @@ void GenModule::Print() {
     cout << "}\n";
 }
 
-// ================ STDLIB Declaration ================== //
-
-extern "C" {
-
-    // Closure handling is a little complex. 
-    // We need to store :
-    // - The code pointer
-    // - The closure captured elements
-    // - The total number of args the function 
-    //      takes because we don't have it anywhere
-    // - The yet supplied number of args
-    // - The yet supplied args if any
-    // In any case we are gonna need 1 + NVars + 2 + NbArgs more fields 
-    // in the closure to store all this extra information
-    // The layout of the block will thus be :
-    //
-    // -----------------------------------------
-    // |CodePtr|Vars|Args|NbSuppliedArgs|NbArgs|
-    // -----------------------------------------
-    //
-    // It is compatible with the regular ocaml runtime's closure layout 
-
-    char* makeClosure(int32_t NVars, int32_t* FPtr, int32_t NbArgs, int32_t NbSuppliedArgs) {
-        value Closure;
-        int BlockSize = 3 + NVars + NbArgs;
-        Alloc_small(Closure, BlockSize, Closure_tag);
-        // Set the code pointer
-        Code_val(Closure) = FPtr;
-        // Set the NbArgs
-        Field(Closure, BlockSize - 1) = NbArgs;
-        Field(Closure, BlockSize - 2) = NbSuppliedArgs;
-        return (char*)Closure;
-    }
-
-    void closureSetVar(char* Closure, int VarIdx, char* Value) {
-        Field(Closure, VarIdx + 1) = (value)Value;
-    }
-
-    void closureSetArg(char* Closure, int ArgIdx, char* Value) {
-        int Size = Wosize_val(Closure);
-        Field(Closure, (Size - 3 - ArgIdx)) = (value)Value;
-        Field(Closure, (Size - 2)) -= 1;
-    }
-
-    char* closureGetNbSuppliedArgs(char* Closure, char* Value) {
-        return (char*)Field(Closure, (Wosize_val(Closure) - 2));
-    }
-
-    char* closureGetNbArgs(char* Closure, char* Value) {
-        return (char*)Field(Closure, (Wosize_val(Closure) - 1));
-    }
-
-    void setField(char* Block, int Idx, char* Val) {
-        Field(Block, Idx) = (value)Val;
-    }
-}
-
-Function* GenBlock::getMakeClosure() {
-  auto F = Function->Module->TheModule->getFunction("makeClosure");
-  if (F == NULL) {
-      std::vector<Type*> ArgsTypes;
-      ArgsTypes.push_back(Type::getInt32Ty(getGlobalContext()));
-      ArgsTypes.push_back(Type::getInt32PtrTy(getGlobalContext()));
-      ArgsTypes.push_back(Type::getInt32Ty(getGlobalContext()));
-      ArgsTypes.push_back(Type::getInt32Ty(getGlobalContext()));
-      FunctionType *FT = FunctionType::get(getCharPtrType(),
-                                           ArgsTypes, false);
-      
-      F = Function::Create(FT, Function::ExternalLinkage, "makeClosure", this->Function->Module->TheModule);
-  }
-  
+Function* GenBlock::getFunction(string Name) {
+  auto F = Function->Module->TheModule->getFunction(Name);
   return F;
 }

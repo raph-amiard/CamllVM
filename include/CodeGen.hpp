@@ -81,9 +81,9 @@ public:
     void pushAcc(int n);
     void acc(int n);
     void push();
-    void makeApply(int n);
+    void makeApply(size_t n);
 
-    llvm::Value* getStackAt(int n);
+    llvm::Value* getStackAt(size_t n);
     llvm::Value* stackPop();
 
     llvm::Value* intVal(llvm::Value* From);
@@ -93,7 +93,7 @@ public:
     llvm::Value* castToPtr(llvm::Value* Val);
 
     // Function getters
-    llvm::Function* getMakeClosure();
+    llvm::Function* getFunction(std::string FuncName);
 
 };
 

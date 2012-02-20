@@ -13,7 +13,7 @@
 void readInstructions(std::vector<ZInstruction>& Instructions, int32_t* TabInst, uint32_t Size);
 
 inline void printInstructions(std::vector<ZInstruction>& Instructions, bool LineNums=true, int StartAt=0) {
-    for (int i = StartAt; i < Instructions.size(); i++) {
+    for (uint32_t i = StartAt; i < Instructions.size(); i++) {
 
         switch (Instructions[i].Annotation) {
             case FUNCTION_START:

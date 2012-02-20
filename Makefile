@@ -5,7 +5,7 @@ LIBPATH=ocaml-3.12.1/byterun
 LIBNAME=camlrund
 BIN=bin
 
-CCFLAGS= -g -I${Z3INCLUDE} -std=c++0x
+CCFLAGS= -Wall -Wextra -Wno-unused-parameter -g -I${Z3INCLUDE} -std=c++0x
 CCFINALFLAGS = -L${LIBPATH} -l${LIBNAME}
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
 
@@ -23,8 +23,11 @@ instructions:
 codegen:
 	${CC} -c -o ${OBJ}/CodeGen.o ${SRC}/CodeGen.cpp 
 
-main: instructions context codegen ocaml_runtime 
-	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp ${OBJ}/CodeGen.o ${OBJ}/Instructions.o ${OBJ}/Context.o ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs core jit native`
+stdlib:
+	${CC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib.cpp
+
+main: instructions context codegen ocaml_runtime stdlib
+	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp ${OBJ}/CodeGen.o ${OBJ}/Instructions.o ${OBJ}/Context.o ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native`
 
 clean:
 	rm ${OBJ}/* -rf;
