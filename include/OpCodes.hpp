@@ -59,7 +59,7 @@
     code(RESTART, 0) \
     code(GRAB, 1) \
     code(CLOSURE, 2) \
-    code(CLOSUREREC, 4) \
+    code(CLOSUREREC, 2) \
     code(OFFSETCLOSUREM2, 0) \
     code(OFFSETCLOSURE0, 0) \
     code(OFFSETCLOSURE2, 0) \
