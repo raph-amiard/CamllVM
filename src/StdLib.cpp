@@ -33,15 +33,17 @@ extern "C" {
         return Env;
     }
 
+    void debug(value Arg) {
+        printf("DEBUG : %d\n", Arg);
+    }
+
     // Closure handling is a little complex. 
     // We need to store :
     // - The code pointer
     // - The closure captured elements
-    // - The total number of args the function 
-    //      takes because we don't have it anywhere
     // - The yet supplied number of args
     // - The yet supplied args if any
-    // In any case we are gonna need 1 + NVars + 2 + NbArgs more fields 
+    // In any case we are gonna need 1 + NVars + 1 + NbArgs more fields 
     // in the closure to store all this extra information
     // The layout of the block will thus be :
     //
@@ -52,8 +54,8 @@ extern "C" {
     // It is compatible with the regular ocaml runtime's closure layout 
 
     value makeClosure(value NVars, value FPtr, value NbArgs) {
-        //printf("INTO MAKECLOSURE\n");
-        //printf("NB ARGS = %ld\n", NbArgs);
+        printf("INTO MAKECLOSURE\n");
+        printf("NB ARGS = %ld\n", NbArgs);
         value Closure;
         int BlockSize = 3 + NVars + NbArgs;
         Alloc_small(Closure, BlockSize, Closure_tag);
@@ -61,6 +63,7 @@ extern "C" {
         Code_val(Closure) = (code_t)FPtr;
         // Set the NbRemArgs to the total nb of args
         Field(Closure, BlockSize - 1) = NbArgs;
+        printf("RETURNING FROM MAKECLOSURE\n");
         return Closure;
     }
 
@@ -74,32 +77,37 @@ extern "C" {
         int ArgsSize = NbArgs;
         value CClosure = Closure;
 
-        //printf("INTO APPLY\n\n");
-
-        int i = 1;
+        // While we still have arg to apply 
         while (NbArgs > 0) {
-            int Size = Wosize_val(CClosure);
-            //printf("LOOP NUMBER %d, NBargs = %d\n\n", i, NbArgs);
-            int NbRemArgs = Field(CClosure, (Size - 1));
-            //printf("NBREMARGS FOR THIS CLOSURE : %d\n", NbRemArgs);
 
+            // Get the number of args the current closure needs
+            int Size = Wosize_val(CClosure);
+            int NbRemArgs = Field(CClosure, (Size - 1));
+
+            // Fill the closure with args until it's full 
+            // or we don't have any args left
             while (NbRemArgs > 0 && NbArgs > 0) {
                 Field(CClosure, (Size - 1 - NbRemArgs)) = 
                     (value)Args[ArgsSize - NbArgs];
                 NbRemArgs--; NbArgs--;
             }
 
+            // If the closure is not full
+            // and we don't have any args left, return the closure
             if (NbRemArgs > 0) {
                 Field(CClosure, (Size - 1)) = NbRemArgs;
                 return CClosure;
             }
 
+            // If the closure is full, apply it
             value (*FPtr)(value) = (value(*)(value)) Code_val(CClosure);
             value OldEnv = Env;
             Env = CClosure;
             CClosure = FPtr(CClosure);
             Env = OldEnv;
-            i++;
+
+            // If NbArgs = 0, 
+            // we get out of the loop and return the application result
         }
 
         return CClosure;
