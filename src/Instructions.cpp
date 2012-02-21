@@ -40,6 +40,8 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
     int i = 0;
     uint32_t Pos = 0;
     map <int, ZInstruction*> InstPositions;
+
+    // Size in words
     Size /= 4;
     deque <ZInstruction*> InstsToAdjust;
 
