@@ -10,13 +10,22 @@ void readInstructions(vector<ZInstruction>& Instructions, int32_t* TabInst, uint
         // Read instruction
         // And then fill arguments values
         Inst.OpNum = toBigEndian(*TabInst++);
+        cout << "INST OPNUM : " << toBigEndian(Inst.OpNum) << endl;
         Inst.idx = i;
         Inst.Annotation = NOTHING;
+        int32_t Arity = Inst.Arity();
         for (int j = 0; j < Inst.Arity(); j++) 
             Inst.Args[j] = toBigEndian(*TabInst++);
 
-        Size -= (4 + (4*Inst.Arity()));
+        if (Inst.OpNum == CLOSUREREC) {
+            Arity+=Inst.Args[0];
+            TabInst += Inst.Args[0];
+        }
+
+        Size -= (4 + (4*Arity));
         i++;
+        cout << "READ ISNTRUCTION : ";
+        Inst.Print(true);
         Instructions.push_back(Inst);
     }
 }
@@ -24,7 +33,7 @@ void readInstructions(vector<ZInstruction>& Instructions, int32_t* TabInst, uint
 static int JumpInstsArgs[][2] = {
     {PUSH_RETADDR, 0},
     {CLOSURE, 1},
-    {CLOSUREREC, 2},
+    //{CLOSUREREC, 2},
     {BRANCH, 0},
     {BRANCHIF, 0},
     {BRANCHIFNOT, 0},
