@@ -5,9 +5,10 @@ LIBPATH=ocaml-3.12.1/byterun
 LIBNAME=camlrund
 BIN=bin
 
-CCFLAGS= -Wall -Wextra -Wno-unused-parameter -g -I${Z3INCLUDE} -std=c++0x
+CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
 CCFINALFLAGS = -L${LIBPATH} -l${LIBNAME}
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
+STDLIBCC=clang++ -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
 
 all: main
 
@@ -24,10 +25,10 @@ codegen:
 	${CC} -c -o ${OBJ}/CodeGen.o ${SRC}/CodeGen.cpp 
 
 stdlib:
-	${CC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib.cpp
+	${STDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib.cpp
 
 main: instructions context codegen ocaml_runtime stdlib
-	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp ${OBJ}/CodeGen.o ${OBJ}/Instructions.o ${OBJ}/Context.o ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native`
+	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp ${OBJ}/CodeGen.o ${OBJ}/Instructions.o ${OBJ}/Context.o ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 clean:
 	rm ${OBJ}/* -rf;
