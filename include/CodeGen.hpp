@@ -80,6 +80,7 @@ public:
     // Codegen helper funcs
     void pushAcc(int n);
     void acc(int n);
+    void envAcc(int n);
     void push();
     void makeApply(size_t n);
 
@@ -88,7 +89,6 @@ public:
 
     llvm::Value* intVal(llvm::Value* From);
     llvm::Value* valInt(llvm::Value* From);
-    llvm::Value* ConstInt(uint64_t val);
     llvm::Value* castToInt(llvm::Value* Val);
     llvm::Value* castToPtr(llvm::Value* Val);
 
@@ -97,6 +97,7 @@ public:
 
 };
 
+llvm::Value* ConstInt(uint64_t val);
 
 
 // ================ GenFunction Declaration ================== //
@@ -113,7 +114,6 @@ private:
     std::map<int, GenBlock*> Blocks;
     GenBlock* FirstBlock;
     GenModule* Module;
-    llvm::Function* ApplierFunction;
 
     // Map closures to llvm Functions to keep track of signatures
     std::map<llvm::Value*, ClosureInfo> ClosuresFunctions;
@@ -121,6 +121,7 @@ private:
     void generateApplierFunction();
 
 public:
+    llvm::Function* ApplierFunction;
     llvm::Function* LlvmFunc;
     GenFunction(int Id, GenModule* Module);
     std::string name();
@@ -144,6 +145,7 @@ public:
     std::map<int, GenFunction*> Functions;
 
     llvm::FunctionPassManager* FPM;
+    llvm::PassManager* PM;
     llvm::Module *TheModule;
     llvm::IRBuilder<> * Builder;
     llvm::ExecutionEngine* ExecEngine;
@@ -156,9 +158,11 @@ public:
 // ================ GenModuleCreator Declaration ================== //
 
 class GenModuleCreator {
+
 private:
     std::vector<ZInstruction>* OriginalInstructions;
     GenModule* Module;
+
 public:
     GenModuleCreator(std::vector<ZInstruction>* Instructions) { 
         this->OriginalInstructions = Instructions; 

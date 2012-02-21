@@ -6,6 +6,7 @@
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/IRReader.h"
 
@@ -16,6 +17,7 @@ extern "C" {
 }
 
 #include <stdexcept>
+#include <cstdio>
 
 /* GC interface 
  * Those macros are empty for the moment 
@@ -36,8 +38,8 @@ using namespace llvm;
 
 // ============================ HELPERS ============================== //
 
-PointerType* getCharPtrType() {
-    return Type::getInt8PtrTy(getGlobalContext());
+Type* getValType() {
+    return Type::getIntNTy(getGlobalContext(), sizeof(value) * 8);
 }
 
 // ================ GenModuleCreator Implementation ================== //
@@ -221,6 +223,7 @@ Value* GenBlock::getStackAt(size_t n) {
             return PreviousBlocks.front()->Stack[n - Stack.size()];
         } else {
             // TODO: Make the PHI
+            printf("YOU SHOULDNT BE HERE MECREANT\n");
             return nullptr;
         }
     } else {
@@ -235,8 +238,19 @@ Value* GenBlock::stackPop() {
     return Val;
 }
 
-void GenBlock::push() { this->Stack.push_front(Accu); }
+void GenBlock::push() { 
+    this->Stack.push_front(Accu); 
+}
 void GenBlock::acc(int n) { this->Accu = this->getStackAt(n); }
+
+void GenBlock::envAcc(int n) { 
+    auto Env = Builder->CreateCall(getFunction("getEnv"));
+    auto NumField = ConstInt(n);
+    Accu = Builder->CreateCall2(getFunction("getField"), 
+                               Env,
+                               ConstInt(n));
+}
+
 void GenBlock::pushAcc(int n) { push(); acc(n); }
 
 BasicBlock* GenBlock::CodeGen() {
@@ -258,8 +272,8 @@ Value* GenBlock::castToInt(Value* Val) {
 }
 
 Value* GenBlock::castToPtr(Value* Val) {
-    if (Val->getType() != getCharPtrType())
-        return Builder->CreateIntToPtr(Val, getCharPtrType());
+    if (Val->getType() != getValType())
+        return Builder->CreateIntToPtr(Val, getValType());
     else
         return Val;
 }
@@ -272,10 +286,10 @@ Value* GenBlock::valInt(Value* From) {
     return Builder->CreateAdd(Builder->CreateShl(From, 1), ConstInt(1));
 }
 
-Value* GenBlock::ConstInt(uint64_t val) {
+Value* ConstInt(uint64_t val) {
     return ConstantInt::get(
         getGlobalContext(), 
-        APInt(32, val, /*signed=*/true)
+        APInt(sizeof(value)*8, val, /*signed=*/true)
     );
 }
 
@@ -283,12 +297,30 @@ void GenBlock::makeApply(size_t n) {
 
     ClosureInfo CI = Function->ClosuresFunctions[Accu];
 
+
     if (CI.IsBare && CI.LlvmFunc->arg_size() == n) {
+
         vector<Value*> ArgsV;
-        for (size_t i = 0; i < n; i++) {
+        for (size_t i = 0; i < n; i++)
             ArgsV.push_back(castToPtr(getStackAt(i)));
-        }
         Accu = Builder->CreateCall(CI.LlvmFunc, ArgsV);
+
+    } else {
+
+        auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), n));
+        for (size_t i = 0; i < n; i++) {
+            vector<Value*> GEPlist; 
+            GEPlist.push_back(ConstInt(0));
+            GEPlist.push_back(ConstInt(i));
+            auto Ptr = Builder->CreateGEP(Array, GEPlist);
+            auto Val = getStackAt(i);
+            Builder->CreateStore(Val, Ptr);
+        }
+
+        auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo());
+        ArrayPtr->dump();
+        Accu = Builder->CreateCall3(getFunction("apply"), Accu, ConstInt(n), ArrayPtr);
+
     }
 }
 
@@ -296,11 +328,26 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     Value *TmpVal;
 
+    cout << "GENERATING INSTRUCTION ";
+    Inst->Print();
+        printf("%p\n", Accu);
+
     switch (Inst->OpNum) {
 
-
+        case CONST0: this->Accu = ConstInt(Val_int(0)); break;
+        case CONST1: this->Accu = ConstInt(Val_int(1)); break;
+        case CONST2: this->Accu = ConstInt(Val_int(2)); break;
+        case CONST3: this->Accu = ConstInt(Val_int(3)); break;
         case CONSTINT:
             this->Accu = ConstInt(Val_int(Inst->Args[0]));
+            break;
+
+        case PUSH: push(); break;
+        case PUSH_RETADDR:
+            TmpVal = Accu;
+            Accu = nullptr;
+            push(); push(); push();
+            Accu = TmpVal;
             break;
 
         case PUSHACC0: pushAcc(0); break;
@@ -312,12 +359,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHACC6: pushAcc(6); break;
         case PUSHACC7: pushAcc(7); break;
 
+
         case PUSHCONST0: push(); this->Accu = ConstInt(Val_int(0)); break;
         case PUSHCONST1: push(); this->Accu = ConstInt(Val_int(1)); break;
         case PUSHCONST2: push(); this->Accu = ConstInt(Val_int(2)); break;
         case PUSHCONST3: push(); this->Accu = ConstInt(Val_int(3)); break;
         case PUSHCONSTINT: 
-            cout << " IN PUSH CONST INT \n";
             push(); 
             this->Accu = ConstInt(Val_int(Inst->Args[0])); 
             break;
@@ -330,6 +377,18 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case ACC5: acc(5); break;
         case ACC6: acc(6); break;
         case ACC7: acc(7); break;
+
+        case ENVACC1: envAcc(1); break;
+        case ENVACC2: envAcc(2); break;
+        case ENVACC3: envAcc(3); break;
+        case ENVACC4: envAcc(4); break;
+        case ENVACC:  envAcc(Inst->Args[0]); break;
+
+        case PUSHENVACC1: push(); envAcc(1); break;
+        case PUSHENVACC2: push(); envAcc(2); break;
+        case PUSHENVACC3: push(); envAcc(3); break;
+        case PUSHENVACC4: push(); envAcc(4); break;
+        case PUSHENVACC:  push(); envAcc(Inst->Args[0]); break;
 
         // Fall through return
         case STOP:
@@ -354,8 +413,24 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             TmpVal = Builder->CreateMul(intVal(Accu), intVal(TmpVal));
             Accu = valInt(TmpVal);
             break;
+        case OFFSETINT:
+            Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
+            break;
+
+        case CLOSUREREC:
+            // Simple recursive function with no trampoline and no closure fields
+            if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
+                cout << "INTO MAKE CLOSUREREC" << endl;
+                Inst->Args[0] = 0;
+                Inst->Args[1] = Inst->Args[2];
+                goto closure;
+            } else {
+                // TODO: Understand how this CLOSUREREC shit works properly
+            }
+            break;
 
         case CLOSURE:{
+            closure:
             auto MakeClos = getFunction("makeClosure");
             auto ClosSetVar = getFunction("closureSetVar");
 
@@ -365,24 +440,30 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 DestGenFunc->CodeGen();
             }
             Builder->SetInsertPoint(LlvmBlock);
-            auto ClosureFunc = DestGenFunc->LlvmFunc;
-            auto CastPtr = Builder->CreateBitCast(ClosureFunc, Type::getInt32PtrTy(getGlobalContext()));
+            auto ClosureFunc = DestGenFunc->ApplierFunction;
+            auto CastPtr = Builder->CreatePtrToInt(ClosureFunc, getValType());
 
 
             int FuncNbArgs = ClosureFunc->arg_size();
             int NbFields = Inst->Args[0];
 
-            Accu = Builder->CreateCall4(MakeClos, 
+            Accu = Builder->CreateCall3(MakeClos, 
                                         ConstInt(NbFields), 
                                         CastPtr, 
-                                        ConstInt(FuncNbArgs), 
-                                        ConstInt(0));
+                                        ConstInt(FuncNbArgs));
 
             // Set Closure fields
             for (int i = 0; i < NbFields; i++)
                 Builder->CreateCall3(ClosSetVar, Accu, ConstInt(i), getStackAt(i));
 
-            ClosureInfo CI = {ClosureFunc, NbFields == 0 ? true : false};
+            ClosureInfo CI = {DestGenFunc->LlvmFunc, NbFields == 0 ? true : false};
+            this->Function->ClosuresFunctions[Accu] = CI;
+            break;
+        }
+
+        case OFFSETCLOSURE0: {
+            Accu = Builder->CreateCall(getFunction("getEnv"));
+            ClosureInfo CI = {Function->LlvmFunc, true};
             this->Function->ClosuresFunctions[Accu] = CI;
             break;
         }
@@ -493,9 +574,9 @@ string GenFunction::name() {
 Function* GenFunction::CodeGen() {
 
     // Make function type
-    vector<Type*> ArgTypes(this->Arity, getCharPtrType());
-    //auto RetType = this->Id == MAIN_FUNCTION_ID ? Type::getVoidTy(getGlobalContext()) : getCharPtrType();
-    auto FT = FunctionType::get(getCharPtrType(), ArgTypes, false);
+    vector<Type*> ArgTypes(this->Arity, getValType());
+    //auto RetType = this->Id == MAIN_FUNCTION_ID ? Type::getVoidTy(getGlobalContext()) : getValType();
+    auto FT = FunctionType::get(getValType(), ArgTypes, false);
 
     // Create the llvm Function object
     LlvmFunc = Function::Create(FT, Function::ExternalLinkage, name(), Module->TheModule);
@@ -521,27 +602,34 @@ Function* GenFunction::CodeGen() {
 }
 
 void GenFunction::generateApplierFunction() {
-    /*
-     * applier(closure, arg) {
-     *    if (closure.nbRemainingArgs == 1)
-     *        ret func(closureArg1, closureArg2, ..., arg)
-     *    else
-     *        closure.Args[closure.nbRemainingArgs+1] = arg
-     *        ret closure
-     * }
-     */
     auto Builder = Module->Builder;
 
-    vector<Type*> ArgTypes(2, getCharPtrType());
-    auto FT = FunctionType::get(getCharPtrType(), ArgTypes, false);
+    vector<Type*> ArgTypes(2, getValType());
+    auto FT = FunctionType::get(getValType(), ArgTypes, false);
     ApplierFunction = Function::Create(FT, Function::ExternalLinkage, name() + "_Applier", Module->TheModule);
 
     auto Block1 = BasicBlock::Create(getGlobalContext());
     Builder->SetInsertPoint(Block1);
-    auto charPtrPtr = getCharPtrType()->getPointerTo();
-    Builder->CreateBitCast(ApplierFunction->arg_begin(), charPtrPtr);
 
+    auto Closure = ApplierFunction->arg_begin();
+    auto BlockSize = Builder->CreateCall(Module->TheModule->getFunction("getBlockSize"), Closure);
+
+    vector<Value*> Args;
+    for (int i = 0; i < Arity; i++) {
+        Args.push_back(Builder->CreateCall2(
+            Module->TheModule->getFunction("getField"),
+            Closure,
+            Builder->CreateSub(BlockSize, ConstInt(1 + Arity - i))
+        ));
+    }
+    auto Ret = Builder->CreateCall(this->LlvmFunc, ArrayRef<Value*>(Args));
+    Builder->CreateRet(Ret);
+
+    ApplierFunction->getBasicBlockList().push_back(Block1);
+
+    verifyFunction(*ApplierFunction);
 }
+
 // ================ GenModule Implementation ================== //
 
 GenModule::GenModule() {
@@ -550,7 +638,11 @@ GenModule::GenModule() {
     SMDiagnostic Diag;
     TheModule = ParseIRFile("bin/StdLib.ll", Diag, getGlobalContext()); //new Module("testmodule", getGlobalContext());
     for (Function& Func : TheModule->getFunctionList()) {
-        Func.dump();
+        if (Func.getName() == "closureSetVar") {
+            llvm::Attributes Attrs;
+            Attrs |= Attribute::AlwaysInline;
+            Func.addFnAttr(Attrs);
+        }
     }
     Builder = new IRBuilder<>(getGlobalContext());
     string ErrStr;
@@ -560,6 +652,10 @@ GenModule::GenModule() {
         exit(1);
     }
 
+    PM = new PassManager();
+    PM->add(createFunctionInliningPass());
+    PM->add(createAlwaysInlinerPass());
+
     FPM = new FunctionPassManager(TheModule);
     FPM->add(new TargetData(*ExecEngine->getTargetData()));
     FPM->add(createBasicAliasAnalysisPass());
@@ -567,6 +663,7 @@ GenModule::GenModule() {
     FPM->add(createReassociatePass());
     FPM->add(createGVNPass());
     FPM->add(createCFGSimplificationPass());
+    FPM->add(createSCCPPass());
 
 }
 
