@@ -83,6 +83,8 @@ public:
     void envAcc(int n);
     void push();
     void makeApply(size_t n);
+    void makeClosure(int32_t NbFields, int32_t FnId);
+    void debug(llvm::Value* DbgVal);
 
     llvm::Value* getStackAt(size_t n);
     llvm::Value* stackPop();

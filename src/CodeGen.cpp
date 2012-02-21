@@ -254,6 +254,7 @@ void GenBlock::pushAcc(int n) { push(); acc(n); }
 BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
+    //debug(ConstInt(this->Id));
 
     for (auto Inst : this->Instructions)
         GenCodeForInst(Inst);
@@ -320,6 +321,45 @@ void GenBlock::makeApply(size_t n) {
         Accu = Builder->CreateCall3(getFunction("apply"), Accu, ConstInt(n), ArrayPtr);
 
     }
+
+    for (size_t i = 0; i < n; i++)
+        stackPop();
+}
+
+void GenBlock::makeClosure(int32_t NbFields, int32_t FnId) {
+    auto MakeClos = getFunction("makeClosure");
+    auto ClosSetVar = getFunction("closureSetVar");
+
+    // Create pointer to dest function
+    auto DestGenFunc = Function->Module->Functions[FnId];
+    if (DestGenFunc->LlvmFunc == NULL) {
+        DestGenFunc->CodeGen();
+    }
+    Builder->SetInsertPoint(LlvmBlock);
+    auto ClosureFunc = DestGenFunc->ApplierFunction;
+    auto CastPtr = Builder->CreatePtrToInt(ClosureFunc, getValType());
+
+
+    int FuncNbArgs = ClosureFunc->arg_size();
+
+    Accu = Builder->CreateCall3(MakeClos, 
+                                ConstInt(NbFields), 
+                                CastPtr, 
+                                ConstInt(FuncNbArgs));
+
+    // Set Closure fields
+    for (int i = 0; i < NbFields; i++)
+        Builder->CreateCall3(ClosSetVar, Accu, ConstInt(i), getStackAt(i));
+
+    ClosureInfo CI = {DestGenFunc->LlvmFunc, NbFields == 0 ? true : false};
+    this->Function->ClosuresFunctions[Accu] = CI;
+}
+
+void GenBlock::debug(Value* DbgVal) {
+    if (DbgVal->getType() != getValType()) {
+        DbgVal = Builder->CreateBitCast(DbgVal, getValType());
+    }
+    Builder->CreateCall(getFunction("debug"), DbgVal);
 }
 
 void GenBlock::GenCodeForInst(ZInstruction* Inst) {
@@ -418,47 +458,19 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case CLOSUREREC:
             // Simple recursive function with no trampoline and no closure fields
             if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
-                cout << "INTO MAKE CLOSUREREC" << endl;
-                Inst->Args[0] = 0;
-                Inst->Args[1] = Inst->Args[2];
-                goto closure;
+                makeClosure(0, Inst->ClosureRecFns[0]);
+                push();
             } else {
-                // TODO: Understand how this CLOSUREREC shit works properly
+                // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
 
-        case CLOSURE:{
-            closure:
-            auto MakeClos = getFunction("makeClosure");
-            auto ClosSetVar = getFunction("closureSetVar");
-
-            // Create pointer to dest function
-            auto DestGenFunc = Function->Module->Functions[Inst->Args[1]];
-            if (DestGenFunc->LlvmFunc == NULL) {
-                DestGenFunc->CodeGen();
-            }
-            Builder->SetInsertPoint(LlvmBlock);
-            auto ClosureFunc = DestGenFunc->ApplierFunction;
-            auto CastPtr = Builder->CreatePtrToInt(ClosureFunc, getValType());
-
-
-            int FuncNbArgs = ClosureFunc->arg_size();
-            int NbFields = Inst->Args[0];
-
-            Accu = Builder->CreateCall3(MakeClos, 
-                                        ConstInt(NbFields), 
-                                        CastPtr, 
-                                        ConstInt(FuncNbArgs));
-
-            // Set Closure fields
-            for (int i = 0; i < NbFields; i++)
-                Builder->CreateCall3(ClosSetVar, Accu, ConstInt(i), getStackAt(i));
-
-            ClosureInfo CI = {DestGenFunc->LlvmFunc, NbFields == 0 ? true : false};
-            this->Function->ClosuresFunctions[Accu] = CI;
+        case CLOSURE:
+            makeClosure(Inst->Args[0], Inst->Args[1]);
             break;
-        }
 
+        case PUSHOFFSETCLOSURE0:
+            push();
         case OFFSETCLOSURE0: {
             Accu = Builder->CreateCall(getFunction("getEnv"));
             ClosureInfo CI = {Function->LlvmFunc, true};
@@ -492,7 +504,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
            TmpVal = Builder->CreateICmpSLT(ConstInt(Inst->Args[0]), intVal(Accu));
            goto makebr;
         case BLEINT:
-           TmpVal = Builder->CreateICmpSLE(ConstInt(Inst->Args[0]), intVal(castToInt(Accu)));
+           TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), castToInt(Accu));
            goto makebr;
         case BGTINT:
            TmpVal = Builder->CreateICmpSGT(ConstInt(Inst->Args[0]), intVal(Accu));
@@ -545,6 +557,8 @@ void GenBlock::PrintAdjBlocks() {
 GenFunction::GenFunction(int Id, GenModule* Module) {
     this->Id = Id;
     this->Module = Module;
+    this->ApplierFunction = nullptr;
+    this->LlvmFunc = nullptr;
 }
 
 void GenFunction::Print() {
@@ -636,7 +650,7 @@ GenModule::GenModule() {
     SMDiagnostic Diag;
     TheModule = ParseIRFile("bin/StdLib.ll", Diag, getGlobalContext()); //new Module("testmodule", getGlobalContext());
     for (Function& Func : TheModule->getFunctionList()) {
-        if (Func.getName() == "closureSetVar") {
+        if (Func.getName() == "makeClosure") {
             llvm::Attributes Attrs;
             Attrs |= Attribute::AlwaysInline;
             Func.addFnAttr(Attrs);
