@@ -64,7 +64,8 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
     while (QInstructions.size()) {
         ZInstruction* Inst = QInstructions[0];
         if (Inst->Annotation == FUNCTION_START) {
-            generateFunction(&QInstructions);
+            auto FuncInsts = initFunction(&QInstructions);
+            generateFunction(Module->Functions[Inst->idx], FuncInsts);
         } else {
             if (Inst->OpNum != RESTART) {
                 MainBlockInsts.push_back(Inst);
@@ -76,14 +77,14 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
     // Create the main function, based on the remaining instructions
     Module->MainFunction = new GenFunction(MAIN_FUNCTION_ID, Module);
     Module->MainFunction->Arity = 0;
-    initFunction(Module->MainFunction, &MainBlockInsts);
+    generateFunction(Module->MainFunction, &MainBlockInsts);
 
     return Module;
 }
 
-void GenModuleCreator::generateFunction(deque<ZInstruction*>* Instructions) {
+deque<ZInstruction*>* GenModuleCreator::initFunction(deque<ZInstruction*>* Instructions) {
 
-    deque<ZInstruction*> FuncInsts;
+    auto FuncInsts = new deque<ZInstruction*>();
     int MaxInstIdx = 0;
 
     // Create the Function and add it to the module functions
@@ -104,7 +105,7 @@ void GenModuleCreator::generateFunction(deque<ZInstruction*>* Instructions) {
     while (true) {
         Inst = Instructions->at(0);
         Instructions->pop_front();
-        FuncInsts.push_back(Inst);
+        FuncInsts->push_back(Inst);
 
         // Keep track of the labeled instruction with the max idx
         // that is part of the function
@@ -114,18 +115,13 @@ void GenModuleCreator::generateFunction(deque<ZInstruction*>* Instructions) {
         // And there is no jump to an instruction after this one
         // We have reached the end of the function
         if (Inst->isReturn() && Inst->idx >= MaxInstIdx) {
-            initFunction(Func, &FuncInsts);
-            return;
+            return FuncInsts;
         }
     }
 
 }
 
-void GenModuleCreator::initFunction(GenFunction* Function, deque<ZInstruction*>* Instructions) {
-    genBlocks(Function, Instructions);
-}
-
-void GenModuleCreator::genBlocks(GenFunction* Function, deque<ZInstruction*>* Instructions) {
+void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstruction*>* Instructions) {
 
     // The first instruction is the beginning of a block
     Instructions->at(0)->Annotation = BLOCK_START;

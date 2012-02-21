@@ -166,14 +166,15 @@ private:
     GenModule* Module;
 
 public:
+
     GenModuleCreator(std::vector<ZInstruction*>* Instructions) { 
         this->OriginalInstructions = Instructions; 
         Module = new GenModule();
     }
+
     GenModule* generate(int FirstInst=0, int LastInst=0);
-    void generateFunction(std::deque<ZInstruction*>* Instructions);
-    void initFunction(GenFunction* Function, std::deque<ZInstruction*>* Instructions);
-    void genBlocks(GenFunction* Function, std::deque<ZInstruction*>* Instructions);
+    std::deque<ZInstruction*>* initFunction(std::deque<ZInstruction*>* Instructions);
+    void generateFunction(GenFunction* Function, std::deque<ZInstruction*>* Instructions);
 };
 
 // ================ STDLIB Declaration ================== //
