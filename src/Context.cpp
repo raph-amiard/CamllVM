@@ -83,16 +83,14 @@ void Context::init(string _FileName) {
     caml_close_channel(chan); /* this also closes Fd */
     caml_stat_free(Trail.section);
 
-    std::vector<ZInstruction> Instructions;
+    std::vector<ZInstruction*> Instructions;
     readInstructions(Instructions, caml_start_code, caml_code_size);
-    convertCodeOffsets(Instructions);
     annotateNodes(Instructions);
+    printInstructions(Instructions, true, 947); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
+    Instructions.erase(Instructions.begin() + 966, Instructions.begin() + 975);
 
     GenModuleCreator GMC(&Instructions);
-    printInstructions(Instructions, true, 0); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
-
-    Instructions.erase(Instructions.begin() + 960, Instructions.begin() + 969);
-    GenModule* Mod = GMC.generate(941);
+    GenModule* Mod = GMC.generate(947);
     Mod->Print();
 
     auto MainFunc = Mod->MainFunction;

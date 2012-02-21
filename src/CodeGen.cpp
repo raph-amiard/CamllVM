@@ -55,7 +55,7 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
 
     // Create a queue of all instructions
     for (int i = FirstInst; i <= LastInst; i++) {
-        QInstructions.push_back(&OriginalInstructions->at(i));
+        QInstructions.push_back(OriginalInstructions->at(i));
     }
 
     // Create functions. This will also remove the function's instructions
@@ -67,7 +67,6 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
             generateFunction(&QInstructions);
         } else {
             if (Inst->OpNum != RESTART) {
-                Inst->Print();
                 MainBlockInsts.push_back(Inst);
             }
             QInstructions.pop_front();
@@ -245,7 +244,6 @@ void GenBlock::acc(int n) { this->Accu = this->getStackAt(n); }
 
 void GenBlock::envAcc(int n) { 
     auto Env = Builder->CreateCall(getFunction("getEnv"));
-    auto NumField = ConstInt(n);
     Accu = Builder->CreateCall2(getFunction("getField"), 
                                Env,
                                ConstInt(n));

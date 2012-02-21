@@ -160,11 +160,11 @@ public:
 class GenModuleCreator {
 
 private:
-    std::vector<ZInstruction>* OriginalInstructions;
+    std::vector<ZInstruction*>* OriginalInstructions;
     GenModule* Module;
 
 public:
-    GenModuleCreator(std::vector<ZInstruction>* Instructions) { 
+    GenModuleCreator(std::vector<ZInstruction*>* Instructions) { 
         this->OriginalInstructions = Instructions; 
         Module = new GenModule();
     }
