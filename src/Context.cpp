@@ -89,31 +89,37 @@ void Context::init(string _FileName) {
     annotateNodes(Instructions);
 
     GenModuleCreator GMC(&Instructions);
-    Instructions.erase(Instructions.begin() + 955, Instructions.begin() + 965);
-    printInstructions(Instructions, true, 941); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
+    printInstructions(Instructions, true, 0); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
 
+    Instructions.erase(Instructions.begin() + 960, Instructions.begin() + 969);
     GenModule* Mod = GMC.generate(941);
     Mod->Print();
 
-    cout << "AFTER MOD PRINT\n";
-
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
-    for (auto FuncP : Mod->Functions)
-        FuncP.second->LlvmFunc->dump();
-    MainFunc->LlvmFunc->dump();
 
+    /*
+    Mod->PM->run(*Mod->TheModule);
+    for (auto& F: Mod->TheModule->getFunctionList()) {
+        Mod->FPM->run(F);
+    }
     Mod->FPM->run(*MainFunc->LlvmFunc);
+    */
+
+    for (auto FuncP : Mod->Functions) {
+        FuncP.second->LlvmFunc->dump();
+    }
     MainFunc->LlvmFunc->dump();
 
+    /*
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
-
     char* (*FP)() = (char* (*)())(intptr_t)FPtr;
     int a = (int) FP();
     cout << "A = " << a << endl;
 
     cout << "WEREATHEND" << endl;
 
+    */
     
 
 }
