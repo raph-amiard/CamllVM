@@ -259,7 +259,6 @@ BasicBlock* GenBlock::CodeGen() {
 }
 
 Value* GenBlock::castToInt(Value* Val) {
-    //auto IntType = Type::getInt32Ty(getGlobalContext());
     if (Val->getType() != getValType())
         return Builder->CreatePtrToInt(Val, getValType());
     else
@@ -268,7 +267,7 @@ Value* GenBlock::castToInt(Value* Val) {
 
 Value* GenBlock::castToPtr(Value* Val) {
     if (Val->getType() != getValType())
-        return Builder->CreateIntToPtr(Val, getValType());
+        return Builder->CreateIntToPtr(Val, getValType()->getPointerTo());
     else
         return Val;
 }
@@ -297,7 +296,7 @@ void GenBlock::makeApply(size_t n) {
 
         vector<Value*> ArgsV;
         for (size_t i = 0; i < n; i++)
-            ArgsV.push_back(castToPtr(getStackAt(i)));
+            ArgsV.push_back(getStackAt(i));
         Accu = Builder->CreateCall(CI.LlvmFunc, ArgsV);
 
     } else {
@@ -426,10 +425,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
         // Fall through return
         case STOP:
-            cout << "IN STOP INSTRUCTION \n";
         case RETURN: 
-            Builder->CreateRet(castToPtr(Accu)); 
-            cout << "END RETURN" << endl;
+            Builder->CreateRet(Accu); 
             break;
 
         case ADDINT:
