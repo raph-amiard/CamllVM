@@ -87,7 +87,7 @@ void Context::init(string _FileName) {
     readInstructions(Instructions, caml_start_code, caml_code_size);
     annotateNodes(Instructions);
     printInstructions(Instructions, true, 947); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
-    Instructions.erase(Instructions.begin() + 966, Instructions.begin() + 975);
+    Instructions.erase(Instructions.end() - 10, Instructions.end() - 1);
 
     GenModuleCreator GMC(&Instructions);
     GenModule* Mod = GMC.generate(947);
@@ -96,29 +96,30 @@ void Context::init(string _FileName) {
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
 
-    /*
+    for (auto FuncP : Mod->Functions) {
+        FuncP.second->LlvmFunc->dump();
+    }
+    MainFunc->LlvmFunc->dump();
+
+    cout << "========================================================" << endl;
+
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
     }
     Mod->FPM->run(*MainFunc->LlvmFunc);
-    */
 
     for (auto FuncP : Mod->Functions) {
         FuncP.second->LlvmFunc->dump();
     }
     MainFunc->LlvmFunc->dump();
 
-    /*
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
     char* (*FP)() = (char* (*)())(intptr_t)FPtr;
     int a = (int) FP();
     cout << "A = " << a << endl;
 
     cout << "WEREATHEND" << endl;
-
-    */
-    
 
 }
 
