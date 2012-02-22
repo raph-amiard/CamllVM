@@ -259,9 +259,9 @@ BasicBlock* GenBlock::CodeGen() {
 }
 
 Value* GenBlock::castToInt(Value* Val) {
-    auto IntType = Type::getInt32Ty(getGlobalContext());
-    if (Val->getType() != IntType)
-        return Builder->CreatePtrToInt(Val, IntType);
+    //auto IntType = Type::getInt32Ty(getGlobalContext());
+    if (Val->getType() != getValType())
+        return Builder->CreatePtrToInt(Val, getValType());
     else
         return Val;
 }
@@ -429,6 +429,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             cout << "IN STOP INSTRUCTION \n";
         case RETURN: 
             Builder->CreateRet(castToPtr(Accu)); 
+            cout << "END RETURN" << endl;
             break;
 
         case ADDINT:
