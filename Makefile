@@ -9,7 +9,7 @@ BIN=bin
 CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
 CCFINALFLAGS = -L${LIBPATH} -l${LIBNAME}
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
-STDLIBCC=clang++ -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
+CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE}
 
 all: main
 
@@ -22,10 +22,10 @@ ${OCAMLPATH}/config/Makefile:
 ${OBJ}/%.o: ${SRC}/%.cpp
 	${CC} -c -o $@ $<
 
-${BIN}/StdLib.ll:
-	${STDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib.cpp
+stdlib:
+	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/CStdLib.c
 
-main: ${OBJ}/Instructions.o ${OBJ}/Context.o ${OBJ}/CodeGen.o ocaml_runtime ${BIN}/StdLib.ll
+main: ${OBJ}/Instructions.o ${OBJ}/Context.o ${OBJ}/CodeGen.o ocaml_runtime stdlib
 	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp ${OBJ}/CodeGen.o ${OBJ}/Instructions.o ${OBJ}/Context.o ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
