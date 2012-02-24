@@ -276,10 +276,12 @@ public:
 
     inline bool isReturn() {
         switch (OpNum) {
+            case RAISE:
             case APPTERM:
             case APPTERM1:
             case APPTERM2:
             case APPTERM3:
+            case STOP:
             case RETURN:
                 return true;
             default:
