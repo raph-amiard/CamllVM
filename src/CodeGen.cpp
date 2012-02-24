@@ -128,11 +128,12 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
 
     // Make a block for every instruction that is a BLOCK_START
     // This is necessary so we can reference next and previous blocks
-    for (ZInstruction* Inst: *Instructions)
+    for (ZInstruction* Inst: *Instructions) {
         if (Inst->Annotation == BLOCK_START) {
             auto Block = new GenBlock(Inst->idx, Function);
             Function->Blocks[Inst->idx] = Block;
         }
+    }
 
     // Get the first block
     Function->FirstBlock = Function->Blocks[Instructions->at(0)->idx];
@@ -192,6 +193,7 @@ GenBlock::GenBlock(int Id, GenFunction* Function) {
     this->Id = Id;
     this->Function = Function;
     this->Builder = Function->Module->Builder;
+    this->Accu = nullptr;
 
     // Create the LlvmBlock
     LlvmBlock = BasicBlock::Create(getGlobalContext(), name());
@@ -210,20 +212,81 @@ std::string GenBlock::name() {
     return ss.str();
 }
 
-Value* GenBlock::getStackAt(size_t n) {
+Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
+
+    std::list<GenBlock*> PrBlocks = PreviousBlocks;
+    if (IgnorePrevBlock != nullptr) PrBlocks.remove(IgnorePrevBlock);
+
+    Value* Ret = nullptr;
+
     if (n >= Stack.size()) {
-        if (PreviousBlocks.size() == 0)
-            throw std::logic_error("Bad stack access !");
-        else if (PreviousBlocks.size() == 1) {
-            return PreviousBlocks.front()->Stack[n - Stack.size()];
+        auto NbPrevBlocks = PrBlocks.size();
+        int PrevStackPos = n - Stack.size();
+
+        auto It = PrevStackCache.find(PrevStackPos);
+        if (It != PrevStackCache.end()) {
+            Ret = It->second;
         } else {
-            // TODO: Make the PHI
-            printf("YOU SHOULDNT BE HERE MECREANT\n");
-            return nullptr;
+
+            if (NbPrevBlocks == 0) {
+                dumpStack();
+                throw std::logic_error("Bad stack access !");
+            } else if (NbPrevBlocks == 1) {
+                Ret = PrBlocks.front()->getStackAt(PrevStackPos);
+            } else {
+                auto B = Builder->GetInsertBlock();
+                Builder->SetInsertPoint(LlvmBlock);
+                PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "phi");
+                PHINodes.push_back(make_pair(PHI, PrevStackPos));
+                Builder->SetInsertPoint(B);
+                Ret = PHI;
+            }
+            PrevStackCache[PrevStackPos] = Ret;
         }
+
     } else {
-        return Stack[n];
+        Ret = Stack[n];
     }
+
+    Ret = getMutatedValue(Ret);
+
+    Ret->dump();
+
+    return Ret;
+}
+
+Value* GenBlock::getMutatedValue(Value* Val) {
+    auto It = MutatedVals.find(Val);
+    if (It != MutatedVals.end())
+        return getMutatedValue(It->second);
+
+    return Val;
+}
+
+void GenBlock::handlePHINodes() {
+    for (auto Pair : PHINodes) 
+        for (auto Block : PreviousBlocks) {
+            if (Pair.second == -1)
+                Pair.first->addIncoming(Block->Accu, Block->LlvmBlock);
+            else
+                Pair.first->addIncoming(Block->getStackAt(Pair.second, this), Block->LlvmBlock);
+        }
+
+    auto& IList = LlvmBlock->getInstList();
+    deque<decltype(IList.begin())> Phis;
+    for (auto It=IList.begin(); It != IList.end(); ++It) {
+        if (isa<PHINode>(*It)) {
+            Phis.push_back(It);
+        }
+    }
+    for (auto Phi : Phis) IList.remove(Phi);
+    for (auto Phi : Phis) IList.push_front(Phi);
+}
+
+void GenBlock::dumpStack() {
+    cout << "============== Stack For Block " << name() << " ==================" << endl;
+    for (auto Val : Stack) Val->dump();
+    cout << "==================================================================" << endl;
 }
 
 Value* GenBlock::stackPop() {
@@ -234,9 +297,16 @@ Value* GenBlock::stackPop() {
 }
 
 void GenBlock::push() { 
+    if (Accu == nullptr) {
+        auto PHI = Builder->CreatePHI(getValType(), PreviousBlocks.size());
+        PHINodes.push_back(make_pair(PHI, -1));
+        Accu = PHI;
+    }
     this->Stack.push_front(Accu); 
 }
-void GenBlock::acc(int n) { this->Accu = this->getStackAt(n); }
+void GenBlock::acc(int n) { 
+    this->Accu = this->getStackAt(n); 
+}
 
 void GenBlock::envAcc(int n) { 
     auto Env = Builder->CreateCall(getFunction("getEnv"));
@@ -250,12 +320,20 @@ void GenBlock::pushAcc(int n) { push(); acc(n); }
 BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
-    //debug(ConstInt(this->Id));
 
     for (auto Inst : this->Instructions)
         GenCodeForInst(Inst);
 
     return LlvmBlock;
+}
+
+void GenBlock::genTermInst() {
+
+    Builder->SetInsertPoint(LlvmBlock);
+    auto Inst = Instructions.back();
+
+    if (!(Inst->isJumpInst() || Inst->isReturn()))
+        Builder->CreateBr(this->NextBlocks.front()->LlvmBlock);
 }
 
 Value* GenBlock::castToInt(Value* Val) {
@@ -350,6 +428,14 @@ void GenBlock::makeClosure(int32_t NbFields, int32_t FnId) {
     this->Function->ClosuresFunctions[Accu] = CI;
 }
 
+void GenBlock::makeSetField(size_t n) {
+    Builder->CreateCall3(getFunction("setField"), Accu, ConstInt(n), stackPop());
+}
+
+void GenBlock::makeGetField(size_t n) {
+    Accu = Builder->CreateCall2(getFunction("getField"), Accu, ConstInt(n));
+}
+
 void GenBlock::debug(Value* DbgVal) {
     if (DbgVal->getType() != getValType()) {
         DbgVal = Builder->CreateBitCast(DbgVal, getValType());
@@ -361,9 +447,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     Value *TmpVal;
 
-    cout << "GENERATING INSTRUCTION ";
-    Inst->Print();
-        printf("%p\n", Accu);
+    cout << "Generating Instruction "; Inst->Print(true);
+    printTab(2);
+    printf("Accu pointer before: {%p}\n", Accu);
+    //if (Accu) Accu->dump();
 
     switch (Inst->OpNum) {
 
@@ -375,24 +462,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             this->Accu = ConstInt(Val_int(Inst->Args[0]));
             break;
 
-        case PUSH: push(); break;
-        case PUSH_RETADDR:
-            TmpVal = Accu;
-            Accu = nullptr;
-            push(); push(); push();
-            Accu = TmpVal;
-            break;
-
-        case PUSHACC0: pushAcc(0); break;
-        case PUSHACC1: pushAcc(1); break;
-        case PUSHACC2: pushAcc(2); break;
-        case PUSHACC3: pushAcc(3); break;
-        case PUSHACC4: pushAcc(4); break;
-        case PUSHACC5: pushAcc(5); break;
-        case PUSHACC6: pushAcc(6); break;
-        case PUSHACC7: pushAcc(7); break;
-
-
         case PUSHCONST0: push(); this->Accu = ConstInt(Val_int(0)); break;
         case PUSHCONST1: push(); this->Accu = ConstInt(Val_int(1)); break;
         case PUSHCONST2: push(); this->Accu = ConstInt(Val_int(2)); break;
@@ -400,6 +469,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHCONSTINT: 
             push(); 
             this->Accu = ConstInt(Val_int(Inst->Args[0])); 
+            break;
+
+        case POP: stackPop(); break;
+        case PUSH: push(); break;
+        case PUSH_RETADDR:
+            push(); push(); push();
             break;
 
         case ACC0: acc(0); break;
@@ -410,6 +485,18 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case ACC5: acc(5); break;
         case ACC6: acc(6); break;
         case ACC7: acc(7); break;
+        case ACC: acc(Inst->Args[0]); break;
+
+        case PUSHACC0: pushAcc(0); break;
+        case PUSHACC1: pushAcc(1); break;
+        case PUSHACC2: pushAcc(2); break;
+        case PUSHACC3: pushAcc(3); break;
+        case PUSHACC4: pushAcc(4); break;
+        case PUSHACC5: pushAcc(5); break;
+        case PUSHACC6: pushAcc(6); break;
+        case PUSHACC7: pushAcc(7); break;
+        case PUSHACC:  pushAcc(Inst->Args[0]); break;
+
 
         case ENVACC1: envAcc(1); break;
         case ENVACC2: envAcc(2); break;
@@ -422,12 +509,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHENVACC3: push(); envAcc(3); break;
         case PUSHENVACC4: push(); envAcc(4); break;
         case PUSHENVACC:  push(); envAcc(Inst->Args[0]); break;
-
-        // Fall through return
-        case STOP:
-        case RETURN: 
-            Builder->CreateRet(Accu); 
-            break;
 
         case ADDINT:
             TmpVal = castToInt(stackPop());
@@ -445,9 +526,45 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             TmpVal = Builder->CreateMul(intVal(Accu), intVal(TmpVal));
             Accu = valInt(TmpVal);
             break;
+        case DIVINT:
+            TmpVal = stackPop();
+            TmpVal = Builder->CreateSDiv(intVal(Accu), intVal(TmpVal));
+            Accu = valInt(TmpVal);
+            break;
+        case MODINT:
+            TmpVal = stackPop();
+            TmpVal = Builder->CreateSRem(intVal(Accu), intVal(TmpVal));
+            Accu = valInt(TmpVal);
+            break;
         case OFFSETINT:
             Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
             break;
+
+        case GTINT:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpSGT(Accu, TmpVal);
+            break;
+        case NEQ:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpNE(Accu, TmpVal);
+            break;
+
+        case ASSIGN:
+            MutatedVals[getStackAt(Inst->Args[0])] = Accu;
+            break;
+
+
+        case SETFIELD0: makeSetField(0); break;
+        case SETFIELD1: makeSetField(1); break;
+        case SETFIELD2: makeSetField(2); break;
+        case SETFIELD3: makeSetField(3); break;
+        case SETFIELD:  makeSetField(Inst->Args[0]); break;
+
+        case GETFIELD0: makeGetField(0); break;
+        case GETFIELD1: makeGetField(1); break;
+        case GETFIELD2: makeGetField(2); break;
+        case GETFIELD3: makeGetField(3); break;
+        case GETFIELD:  makeGetField(Inst->Args[0]); break;
 
         case CLOSUREREC:
             // Simple recursive function with no trampoline and no closure fields
@@ -472,19 +589,60 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
+        case C_CALL1: 
+            Accu = Builder->CreateCall2(getFunction("primCall1"), ConstInt(Inst->Args[0]), Accu);
+            break;
+        case C_CALL2: {
+            auto Arg2 = stackPop();
+            Accu = Builder->CreateCall3(getFunction("primCall2"), ConstInt(Inst->Args[0]), Accu, Arg2);
+            break;
+        }
+        case C_CALL3: {
+            auto Arg2 = stackPop();
+            auto Arg3 = stackPop();
+            Accu = Builder->CreateCall4(getFunction("primCall3"), ConstInt(Inst->Args[0]), Accu, Arg2, Arg3);
+            break;
+        }
+        case C_CALL4: {
+            auto Arg2 = stackPop();
+            auto Arg3 = stackPop();
+            auto Arg4 = stackPop();
+            Accu = Builder->CreateCall5(getFunction("primCall4"), ConstInt(Inst->Args[0]), Accu, Arg2, Arg3, Arg4);
+            break;
+        }
+                      /*
+        case C_CALL5: {
+            auto Arg2 = stackPop();
+            auto Arg3 = stackPop();
+            auto Arg4 = stackPop();
+            auto Arg5 = stackPop();
+            Accu = Builder->CreateCall5(getFunction("primCall5"), Accu, Arg2, Arg3, Arg4, Arg5);
+            break;
+        }
+        */
+
         case APPLY1: makeApply(1); break;
         case APPLY2: makeApply(2); break;
         case APPLY3: makeApply(3); break;
         case APPLY:  makeApply(Inst->Args[0]); break;
-        case APPTERM1: makeApply(1); break;
-        case APPTERM2: makeApply(2); break;
-        case APPTERM3: makeApply(3); break;
-        case APPTERM: makeApply(Inst->Args[0]); break;
+        case APPTERM1: makeApply(1); Builder->CreateRet(Accu); break;
+        case APPTERM2: makeApply(2); Builder->CreateRet(Accu); break;
+        case APPTERM3: makeApply(3); Builder->CreateRet(Accu); break;
+        case APPTERM: makeApply(Inst->Args[0]); Builder->CreateRet(Accu); break;
 
-
+        // Fall through return
+        case STOP:
+        case RETURN: 
+            Builder->CreateRet(Accu); 
+            break;
         case BRANCH:{
             BasicBlock* LBrBlock = BrBlock->LlvmBlock;
             Builder->CreateBr(LBrBlock);
+            break;
+        }
+        case BRANCHIF: {
+            auto BoolVal = Builder->CreateIntCast(Accu, Type::getInt1Ty(getGlobalContext()), getValType());
+            Builder->CreateCondBr(BoolVal, BrBlock->LlvmBlock, NoBrBlock->LlvmBlock);
             break;
         }
 
@@ -498,7 +656,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
            TmpVal = Builder->CreateICmpSLT(ConstInt(Inst->Args[0]), intVal(Accu));
            goto makebr;
         case BLEINT:
-           TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), castToInt(Accu));
+           TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BGTINT:
            TmpVal = Builder->CreateICmpSGT(ConstInt(Inst->Args[0]), intVal(Accu));
@@ -521,10 +679,16 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         }
 
 
+        default:
+            printTab(2);
+            cout << "INSTRUCTION NOT HANDLED" << endl;
+            //exit(42);
+
     }
 }
 
 void GenBlock::Print() {
+    PrintAdjBlocks();
     for (ZInstruction* Inst : Instructions) {
         printTab(2);
         Inst->Print(true);
@@ -532,12 +696,13 @@ void GenBlock::Print() {
 }
 
 void GenBlock::PrintAdjBlocks() {
-    cout << "PREDECESSORS : ";
+    printTab(2);
+    cout << "Predecessors : ";
 
     for (auto Block : PreviousBlocks)
         cout << Block->Id << " ";
 
-    cout << "\nSUCCESSORS : ";
+    cout << " | Successors : ";
 
     for (auto Block : NextBlocks)
         cout << Block->Id << " ";
@@ -558,7 +723,7 @@ GenFunction::GenFunction(int Id, GenModule* Module) {
 void GenFunction::Print() {
     for (auto BlockP : Blocks) {
         printTab(1);
-        cout << "BLOCK " << BlockP.first << ":" << endl;
+        cout << "Block " << BlockP.first << ":" << endl;
         BlockP.second->Print();
     }
 }
@@ -566,7 +731,7 @@ void GenFunction::Print() {
 void GenFunction::PrintBlocks() {
     for (auto BlockP : Blocks) {
         printTab(1);
-        cout << "BLOCK " << BlockP.first;
+        cout << "Block " << BlockP.first;
     }
 }
 
@@ -594,7 +759,13 @@ Function* GenFunction::CodeGen() {
     // Generate each block and put it in the function's list of blocks
     for (auto BlockP : Blocks) {
         BlockP.second->CodeGen();
+        BlockP.second->genTermInst();
+        BlockP.second->dumpStack();
         LlvmFunc->getBasicBlockList().push_back(BlockP.second->LlvmBlock);
+    }
+
+    for (auto BlockP : Blocks) {
+        BlockP.second->handlePHINodes();
     }
 
     // Generate Applier
@@ -602,6 +773,7 @@ Function* GenFunction::CodeGen() {
         this->generateApplierFunction();
 
     // Verify if the function is well formed
+    LlvmFunc->dump();
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;
@@ -674,9 +846,9 @@ GenModule::GenModule() {
 }
 
 void GenModule::Print() {
-    cout << " ============= FUNCTIONS ============ " << endl << endl;
+    cout << " ============= Functions ============ " << endl << endl;
     for (auto FuncP : Functions) {
-        cout << "FUNCTION " << FuncP.first << " (";
+        cout << "Function " << FuncP.first << " (";
         for (int i = 0; i < FuncP.second->Arity; i++) {
             cout << "arg" << i;
             if (i < FuncP.second->Arity - 1) cout << ", ";
@@ -685,7 +857,7 @@ void GenModule::Print() {
         FuncP.second->Print();
         cout << "}" << endl;
     }
-    cout << "MAIN FUNCTION { " << endl;
+    cout << "Main Function { " << endl;
     MainFunction->Print();
     cout << "}\n";
 }

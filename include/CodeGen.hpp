@@ -53,11 +53,18 @@ private:
     GenBlock* BrBlock;
     GenBlock* NoBrBlock;
 
+    // List of PhiNodes to fill at the end of function codegen
+    std::list<std::pair<llvm::PHINode*, int>> PHINodes;
+    void handlePHINodes();
+    void dumpStack();
+    void genTermInst();
+
     // Instructions to generate
     std::vector<ZInstruction*> Instructions;
     
     // Stack handling
     std::deque<llvm::Value*> Stack;
+    std::map<int, llvm::Value*> PrevStackCache;
     llvm::Value* Accu;
 
     // CodeGen result
@@ -67,6 +74,9 @@ private:
     // is a conditional branch. It is equal to the llvm Val 
     // containing the result of the test
     llvm::Value* CondVal;
+
+    std::map<llvm::Value*, llvm::Value*> MutatedVals;
+    llvm::Value* getMutatedValue(llvm::Value* Val);
 
 public:
     GenBlock(int Id, GenFunction* Function);
@@ -84,9 +94,11 @@ public:
     void push();
     void makeApply(size_t n);
     void makeClosure(int32_t NbFields, int32_t FnId);
+    void makeSetField(size_t n);
+    void makeGetField(size_t n);
     void debug(llvm::Value* DbgVal);
 
-    llvm::Value* getStackAt(size_t n);
+    llvm::Value* getStackAt(size_t n, GenBlock* IgnorePrevBlock=nullptr);
     llvm::Value* stackPop();
 
     llvm::Value* intVal(llvm::Value* From);
