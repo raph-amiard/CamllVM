@@ -86,12 +86,15 @@ void Context::init(string _FileName) {
     std::vector<ZInstruction*> Instructions;
     readInstructions(Instructions, caml_start_code, caml_code_size);
     annotateNodes(Instructions);
-    printInstructions(Instructions, true, 947); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
-    Instructions.erase(Instructions.end() - 10, Instructions.end() - 1);
+    printInstructions(Instructions, true, 0); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
+    //Instructions.erase(Instructions.end() - 10, Instructions.end() - 1);
 
     GenModuleCreator GMC(&Instructions);
-    GenModule* Mod = GMC.generate(947);
+    GenModule* Mod = GMC.generate(0);
     Mod->Print();
+
+    int o;
+    cin >> o;
 
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
@@ -103,11 +106,13 @@ void Context::init(string _FileName) {
 
     cout << "========================================================" << endl;
 
+    /*
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
     }
     Mod->FPM->run(*MainFunc->LlvmFunc);
+    */
 
     for (auto FuncP : Mod->Functions) {
         FuncP.second->LlvmFunc->dump();

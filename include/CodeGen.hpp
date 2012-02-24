@@ -189,14 +189,6 @@ public:
     void generateFunction(GenFunction* Function, std::deque<ZInstruction*>* Instructions);
 };
 
-// ================ STDLIB Declaration ================== //
+inline llvm::Type* getValType();
 
-extern "C" {
-    char* makeClosure(int NVars, int32_t* FPtr, int NbArgs, int NbSuppliedArgs);
-    void setField(char* Block, int Idx, char* Val); 
-    void closureSetVar(char* Closure, int VarIdx, char* Value); 
-    void closureSetArg(char* Closure, int ArgIdx, char* Value); 
-    char* closureGetNbSuppliedArgs(char* Closure, char* Value);
-    char* closureGetNbArgs(char* Closure, char* Value);
-}
 #endif // CODEGEN_HPP
