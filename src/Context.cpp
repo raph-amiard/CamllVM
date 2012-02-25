@@ -34,7 +34,7 @@ static uintnat heap_chunk_init = Heap_chunk_def;
 static uintnat heap_size_init = Init_heap_def;
 static uintnat max_stack_init = Max_stack_def;
 
-void Context::init(string _FileName) {
+void Context::init(string _FileName, int PrintFrom, int EraseFirst, int EraseLast) {
 
     cout << "LOL?" << endl;
 
@@ -83,19 +83,39 @@ void Context::init(string _FileName) {
     caml_close_channel(chan); /* this also closes Fd */
     caml_stat_free(Trail.section);
 
-    std::vector<ZInstruction*> Instructions;
     readInstructions(Instructions, caml_start_code, caml_code_size);
     annotateNodes(Instructions);
-    printInstructions(Instructions, true, 0); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
-    //Instructions.erase(Instructions.end() - 10, Instructions.end() - 1);
 
+    if (EraseFirst != EraseLast) {
+        std::cout << Instructions.size() << std::endl;
+        std::vector<ZInstruction*>::iterator Beginning, Ending;
+        if (EraseFirst > 0)
+            Beginning = Instructions.begin() + EraseFirst;
+        else
+            Beginning = Instructions.end() + EraseFirst;
+
+        if (EraseLast > 0)
+            Ending = Instructions.begin() + EraseLast;
+        else
+            Ending = Instructions.end() + EraseLast;
+        
+        Instructions.erase(Beginning, Ending);
+        std::cout << Instructions.size() << std::endl;
+    }
+
+    printInstructions(Instructions, true, PrintFrom); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
+}
+
+
+void Context::generateMod() {
+    std::cout << "generateMod\n";
     GenModuleCreator GMC(&Instructions);
-    GenModule* Mod = GMC.generate(0);
+    Mod = GMC.generate(0);
     Mod->Print();
+}
 
-    int o;
-    cin >> o;
 
+void Context::compile() {
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
 
@@ -103,7 +123,10 @@ void Context::init(string _FileName) {
         FuncP.second->LlvmFunc->dump();
     }
     MainFunc->LlvmFunc->dump();
+}
 
+void Context::exec() {
+    auto MainFunc = Mod->MainFunction;
     cout << "========================================================" << endl;
 
     /*
@@ -121,7 +144,7 @@ void Context::init(string _FileName) {
 
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
     char* (*FP)() = (char* (*)())(intptr_t)FPtr;
-    int a = (int) FP();
+    long a = (long) FP();
     cout << "A = " << a << endl;
 
     cout << "WEREATHEND" << endl;

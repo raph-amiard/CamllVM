@@ -6,7 +6,7 @@ LIBPATH=${OCAMLPATH}/byterun
 LIBNAME=camlrund
 BIN=bin
 
-CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
+CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x -lboost_program_options
 CCFINALFLAGS = -L${LIBPATH} -l${LIBNAME}
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
 CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE}
