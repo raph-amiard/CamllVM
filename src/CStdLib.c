@@ -28,7 +28,7 @@ value getEnv() {
 }
 
 void debug(value Arg) {
-    printf("DEBUG : %d\n", Arg);
+    printf("DEBUG : %ld\n", (long) Arg);
 }
 
 // Closure handling is a little complex. 
