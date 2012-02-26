@@ -17,13 +17,13 @@ OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule
 
 all: main
 
-ocaml_runtime: ${OCAMLPATH}/config/Makefile
+ocaml_runtime: ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
 	cd ${LIBPATH} && make && make libcamlrund.a && rm main.d.o;
 
-${OCAMLPATH}/config/Makefile:
+${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h:
 	cd ${OCAMLPATH} && ./configure
 
-${OBJ}/%.o: ${SRC}/%.cpp
+${OBJ}/%.o: ${SRC}/%.cpp ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
 	${CC} -c -o $@ $<
 
 stdlib:
