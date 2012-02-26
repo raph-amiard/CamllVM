@@ -7,3 +7,5 @@
 *.s
 *.cmi
 *.cmo
+obj
+bin
