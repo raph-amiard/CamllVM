@@ -1,10 +1,12 @@
 OBJ=obj
+dummy := $(shell test -d ${OBJ} || mkdir ${OBJ})
 SRC=src
 Z3INCLUDE=include
 OCAMLPATH=ocaml-3.12.1
 LIBPATH=${OCAMLPATH}/byterun
 LIBNAME=camlrund
 BIN=bin
+dummy := $(shell test -d ${BIN} || mkdir ${BIN})
 
 CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x -lboost_program_options
 CCFINALFLAGS = -L${LIBPATH} -l${LIBNAME}
