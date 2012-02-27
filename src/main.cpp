@@ -25,12 +25,12 @@ int main(int argc, char** argv) {
     string FileName = "";
 
     Options.add_options()
-        ("help,h", "show this help message")
+        ("help,h", "Show this help message.")
         //("verbose,v", "set verbose mode on")
-        ("show-unimplemented,u", "show unimplement ZAM instructions")
-        ("step,s", po::value<int>(&StepToReach)->default_value(StepToReach), "set step to reach\n    1: Reading of instructions\n    2: CFG generation\n    3: llvm code generation\n    4: llvm code execution")
-        ("from,f", po::value<int>(&PrintFrom)->default_value(PrintFrom), "specify the code offset to which the generation will start")
-        ("erase,e", po::value< string >(&ToErase)->default_value(ToErase), "specify a range of code offset to erase (2 values expected)\n    positive: from the begining\n    negative: from the end")
+        ("show-unimplemented,u", "Show unimplemented ZAM instructions.")
+        ("step,s", po::value<int>(&StepToReach)->default_value(StepToReach), "Set step to reach:\n    1: Reading of instructions\n    2: CFG generation\n    3: llvm code generation\n    4: llvm code execution")
+        ("from,f", po::value<int>(&PrintFrom)->default_value(PrintFrom), "Specify the code offset from which the generation will start.")
+        ("erase,e", po::value< string >(&ToErase)->default_value(ToErase), "Specify a range of code offset to erase (2 values expected)\n    positive: from the begining\n    negative: from the end")
         ;
 
     Hidden.add_options()
