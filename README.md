@@ -21,3 +21,8 @@ What does it do for the moment
 - It uses the ocaml runtime (based in the byterun/ folder of the ocaml distribution) to parse an ocaml bytecode file.
 - Processes the ZAM bytecode to rebuild functions and blocks.
 - Emits and eventually jit compile/run llvm IR for a (yet) limited subset of the ZAM instruction set.
+
+Dependencies
+------------
+
+libboost-program-options
