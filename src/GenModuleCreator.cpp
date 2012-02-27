@@ -117,6 +117,10 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
         if (Inst->isJumpInst())
             CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
 
+        if (Inst->OpNum == PUSHTRAP) {
+            CBlock->setNext(Function->Blocks[Inst->Args[0]], true);
+        }
+
         // Put all the instructions into the block
         // Until we reach the next BLOCK_START
         while (Instructions->size()) {
@@ -140,7 +144,7 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
             // Reference the destination block as a next block
             // And reference the current block as a previous block
             // of the destination
-            if (Inst->isJumpInst()) {
+            if (Inst->isJumpInst() || Inst->OpNum == PUSHTRAP) {
                 CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
             }
         }

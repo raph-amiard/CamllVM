@@ -55,8 +55,13 @@ Function* GenFunction::CodeGen() {
         BlockP.second->CodeGen();
         BlockP.second->genTermInst();
         BlockP.second->dumpStack();
-        LlvmFunc->getBasicBlockList().push_back(BlockP.second->LlvmBlock);
+        cout << BlockP.second->LlvmBlocks.size() << endl;
+        for (auto BBlock : BlockP.second->LlvmBlocks)
+            LlvmFunc->getBasicBlockList().push_back(BBlock);
+        cout << "DUMPING Das FUNCTION\n";
+        LlvmFunc->dump();
     }
+
 
     for (auto BlockP : Blocks) {
         BlockP.second->handlePHINodes();

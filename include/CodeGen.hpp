@@ -53,6 +53,10 @@ private:
     GenBlock* BrBlock;
     GenBlock* NoBrBlock;
 
+    // Exception handling
+    std::list<llvm::BasicBlock*> UnwindBlocks;
+    void makeCheckedCall(llvm::Value* callee, llvm::ArrayRef<llvm::Value*> Args);
+
     // List of PhiNodes to fill at the end of function codegen
     std::list<std::pair<llvm::PHINode*, int>> PHINodes;
     void handlePHINodes();
@@ -67,8 +71,10 @@ private:
     std::map<int, llvm::Value*> PrevStackCache;
     llvm::Value* Accu;
 
-    // CodeGen result
+    // Llvm block handling
+    std::pair<llvm::BasicBlock*, llvm::BasicBlock*> addBlock();
     llvm::BasicBlock* LlvmBlock;
+    std::list<llvm::BasicBlock*> LlvmBlocks;
 
     // This pointer is set only if the block last instruction 
     // is a conditional branch. It is equal to the llvm Val 
@@ -93,6 +99,7 @@ public:
     void envAcc(int n);
     void push();
     void makeApply(size_t n);
+    void makePrimCall(size_t n, int32_t NumPrim);
     void makeClosure(int32_t NbFields, int32_t FnId);
     void makeSetField(size_t n);
     void makeGetField(size_t n);
