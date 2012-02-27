@@ -7,3 +7,15 @@
 *.s
 *.cmi
 *.cmo
+obj
+bin
+ocaml-3.12.1/byterun/jumptbl.h
+ocaml-3.12.1/byterun/ld.conf
+ocaml-3.12.1/byterun/ocamlrun
+ocaml-3.12.1/byterun/opnames.h
+ocaml-3.12.1/byterun/primitives
+ocaml-3.12.1/byterun/prims.c
+ocaml-3.12.1/byterun/version.h
+ocaml-3.12.1/config/Makefile
+ocaml-3.12.1/config/m.h
+ocaml-3.12.1/config/s.h
