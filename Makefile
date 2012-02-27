@@ -8,8 +8,8 @@ LIBNAME=camlrund
 BIN=bin
 dummy := $(shell test -d ${BIN} || mkdir ${BIN})
 
-CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x -lboost_program_options
-CCFINALFLAGS = -L${LIBPATH} -l${LIBNAME}
+CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
+LIBS= -lboost_program_options
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
 CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE}
 
@@ -30,7 +30,7 @@ stdlib:
 	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/CStdLib.c
 
 main: $(OBJECTS) ocaml_runtime stdlib
-	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
+	${CC} ${LIBS} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
 clean:
