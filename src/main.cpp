@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
     string ToErase = "0,0";
     int EraseFirst, EraseLast;
     string FileName = "";
+    int ModeContext = 0;
 
     Options.add_options()
         ("help,h", "Show this help message.")
@@ -30,6 +31,7 @@ int main(int argc, char** argv) {
         ("step,s", po::value<int>(&StepToReach)->default_value(StepToReach), "Set step to reach:\n    1: Reading of instructions\n    2: CFG generation\n    3: llvm code generation\n    4: llvm code execution")
         ("from,f", po::value<int>(&PrintFrom)->default_value(PrintFrom), "Specify the code offset from which the generation will start.")
         ("erase,e", po::value< string >(&ToErase)->default_value(ToErase), "Specify a range of code offset to erase (2 values expected)\n    positive: from the begining\n    negative: from the end")
+        ("mode,m", po::value<int>(&ModeContext)->default_value(ModeContext), "Specify the running mode:\n    0: register based\n    1: interpreter based\n    x: same as '0'")
         ;
 
     Hidden.add_options()
@@ -74,7 +76,7 @@ int main(int argc, char** argv) {
     }
 
     Context *ExecContent = nullptr;
-    if (true) {
+    if (ModeContext != 1) {
         ExecContent = new Context();
     } else {
         ExecContent = new SimpleContext();
