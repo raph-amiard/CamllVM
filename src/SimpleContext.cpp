@@ -6,7 +6,8 @@ void SimpleContext::generateMod() {
 }
 
 void SimpleContext::compile() {
-  std::cout << "SimpleContext::compile" << std::endl;
+    std::cout << "SimpleContext::compile: '" << Instructions.size()
+              << "' instructions" << std::endl;
 }
 
 void SimpleContext::exec() {
