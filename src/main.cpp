@@ -17,7 +17,6 @@ void usage() {
 }
 
 int main(int argc, char** argv) {
-    Context ExecContent;
     int StepToReach = 4;
     int PrintFrom = 0;
     string ToErase = "0,0";
@@ -74,8 +73,15 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    ExecContent.init(FileName, PrintFrom, EraseFirst, EraseLast);
-    if (StepToReach > 1) ExecContent.generateMod();
-    if (StepToReach > 2) ExecContent.compile();
-    if (StepToReach > 3) ExecContent.exec();
+    Context *ExecContent = nullptr;
+    if (true) {
+        ExecContent = new Context();
+    } else {
+        ExecContent = new SimpleContext();
+    }
+
+    ExecContent->init(FileName, PrintFrom, EraseFirst, EraseLast);
+    if (StepToReach > 1) ExecContent->generateMod();
+    if (StepToReach > 2) ExecContent->compile();
+    if (StepToReach > 3) ExecContent->exec();
 }
