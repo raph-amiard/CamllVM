@@ -71,7 +71,8 @@ deque<ZInstruction*>* GenModuleCreator::initFunction(deque<ZInstruction*>* Instr
 
         // Keep track of the labeled instruction with the max idx
         // that is part of the function
-        if (Inst->isJumpInst()) MaxInstIdx = max(MaxInstIdx, Inst->getDestIdx());
+        if (Inst->isJumpInst() || Inst->OpNum == PUSHTRAP) 
+            MaxInstIdx = max(MaxInstIdx, Inst->getDestIdx());
 
         // If the instruction is a return instruction
         // And there is no jump to an instruction after this one

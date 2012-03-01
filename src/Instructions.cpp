@@ -19,6 +19,7 @@ static int InstCodeOffsetArgs[][2] = {
     {BULTINT, 1},
     {BUGEINT, 1},
 };
+
 map<int, int>& getCodeOffsetArgs() {
 
     static map<int, int> JumpInsts;
@@ -105,6 +106,8 @@ void annotateNodes(vector<ZInstruction*>& Instructions) {
                 Instructions[Inst->ClosureRecFns[j]]->Annotation = FUNCTION_START;
         } else if (Inst->isReturn()) {
             Inst->Annotation = FUNCTION_RETURN;
+        } else if (Inst->OpNum == PUSHTRAP) {
+            Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;
         } else if (Inst->isJumpInst()) {
             Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;
             Instructions[Inst->idx + 1]->Annotation = BLOCK_START;
