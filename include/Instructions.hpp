@@ -204,7 +204,23 @@ enum InstrAnnotation {
     NOTHING, FUNCTION_START, FUNCTION_RETURN, BLOCK_START
 };
 
-std::map<int, int>& getCodeOffsetArgs();
+
+static std::map<int, int> CodeOffsetArgs = {
+    {PUSH_RETADDR, 0},
+    {CLOSURE, 1},
+    {BRANCH, 0},
+    {BRANCHIF, 0},
+    {BRANCHIFNOT, 0},
+    {PUSHTRAP, 0},
+    {BEQ, 1},
+    {BNEQ, 1},
+    {BLTINT, 1},
+    {BLEINT, 1},
+    {BGTINT, 1},
+    {BGEINT, 1},
+    {BULTINT, 1},
+    {BUGEINT, 1},
+};
 
 /**
  * Struct representing a concrete instruction in a bytecode file
@@ -290,19 +306,16 @@ public:
     }
 
     inline bool hasCodeOffset() {
-        auto CodeOffsetArgs = getCodeOffsetArgs();
         bool hasCodeOff = (CodeOffsetArgs.find(OpNum) != CodeOffsetArgs.end());
         return hasCodeOff;
     }
 
     inline bool getCodeOffsetArgIdx() {
-        auto CodeOffsetArgs = getCodeOffsetArgs();
         return CodeOffsetArgs.find(this->OpNum)->second;
     }
 
     inline int getDestIdx() {
-        auto JumpInsts = getCodeOffsetArgs();
-        return Args[JumpInsts[OpNum]];
+        return Args[CodeOffsetArgs[OpNum]];
     }
 
 };
