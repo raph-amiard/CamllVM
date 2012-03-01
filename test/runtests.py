@@ -23,7 +23,7 @@ def compile_and_run(file_path):
         test_fail(file_path, "Compilation error")
         print "Compilation output : "
         print e.output
-        return
+        raise e
 
     os.remove(file_path + ".cmo")
     os.remove(file_path + ".cmi")
@@ -33,9 +33,12 @@ def compile_and_run(file_path):
 
     try:
         out = subprocess.check_output(z3_call_vect, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError, e:
         test_fail(file_path, "Non zero return code")
-        return
+        print colored("Output dumped to file test_fail.txt", "red")
+        f = open("../../test_fail.txt", "w")
+        f.write(e.output)
+        raise e
 
     res = out.split("\n")[-2].strip()
 
@@ -46,7 +49,7 @@ def compile_and_run(file_path):
             print "{0}: Expected value: {1}".format(test_num, outres)
             print "{0}: Test out value: {1}".format(test_num, res)
             print out
-            return
+            raise Exception()
     except IOError:
         pass
 
@@ -61,9 +64,12 @@ def cmp_filenames(a, b):
     return na - nb
 
 for f in sorted(os.listdir("."), cmp_filenames):
-    if f.endswith(".ml"):
-        compile_and_run(f.split(".")[0])
-        test_num += 1
+    try:
+        if f.endswith(".ml"):
+            compile_and_run(f.split(".")[0])
+            test_num += 1
+    except Exception, e:
+        break
 
 os.remove("a.out")
 

@@ -3,39 +3,6 @@
 
 using namespace std;
 
-static int InstCodeOffsetArgs[][2] = {
-    {PUSH_RETADDR, 0},
-    {CLOSURE, 1},
-    {BRANCH, 0},
-    {BRANCHIF, 0},
-    {BRANCHIFNOT, 0},
-    {PUSHTRAP, 0},
-    {BEQ, 1},
-    {BNEQ, 1},
-    {BLTINT, 1},
-    {BLEINT, 1},
-    {BGTINT, 1},
-    {BGEINT, 1},
-    {BULTINT, 1},
-    {BUGEINT, 1},
-};
-
-map<int, int>& getCodeOffsetArgs() {
-
-    static map<int, int> JumpInsts;
-    static bool JumpInstsInit = false;
-
-    if (!JumpInstsInit) {
-        JumpInstsInit = true;
-        int NbInsts = sizeof(InstCodeOffsetArgs) / (sizeof(int) *2);
-        for (int i = 0; i < NbInsts; i++) 
-            JumpInsts[InstCodeOffsetArgs[i][0]] = InstCodeOffsetArgs[i][1];
-    }
-
-    return JumpInsts;
-}
-
-
 void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uint32_t Size) {
 
     int i = 0;
