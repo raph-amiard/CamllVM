@@ -22,6 +22,11 @@ What does it do for the moment
 - Processes the ZAM bytecode to rebuild functions and blocks.
 - Emits and eventually jit compile/run llvm IR for a (yet) limited subset of the ZAM instruction set.
 
+Testing
+-------
+
+Run "python tests/runtests.py" to run all regression tests
+
 Dependencies
 ------------
 

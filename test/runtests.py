@@ -1,6 +1,11 @@
 import subprocess
 import os
-from termcolor import colored
+
+try:
+    from termcolor import colored
+except ImportError:
+    def colored(txt, col):
+        return txt
 
 Z3_PATH = "../../bin/Z3"
 
