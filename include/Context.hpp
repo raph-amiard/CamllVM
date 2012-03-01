@@ -4,11 +4,22 @@
 
 class Context {
     std::string FileName;
-    std::vector<ZInstruction*> Instructions;
     GenModule* Mod;
 
+protected:
+    std::vector<ZInstruction*> Instructions;
+
 public:
-    void init(std::string FileName, int PrintFrom, int EraseFirst, int EraseLast);
+    virtual ~Context() {};
+    void init(std::string FileName, int EraseFrom, int EraseFirst, int EraseLast);
+    virtual void generateMod();
+    virtual void compile();
+    virtual void exec();
+
+};
+
+class SimpleContext : public Context {
+public:
     void generateMod();
     void compile();
     void exec();

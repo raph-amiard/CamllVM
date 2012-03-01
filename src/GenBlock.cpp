@@ -305,7 +305,7 @@ void GenBlock::makeClosure(int32_t NbFields, int32_t FnId) {
     auto CastPtr = Builder->CreatePtrToInt(ClosureFunc, getValType());
 
 
-    int FuncNbArgs = ClosureFunc->arg_size();
+    int FuncNbArgs = DestGenFunc->LlvmFunc->arg_size();
 
     Accu = Builder->CreateCall3(MakeClos, 
                                 ConstInt(NbFields), 
