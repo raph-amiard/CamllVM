@@ -1,7 +1,6 @@
 #ifndef ENDIANUTILS_HPP
 #define ENDIANUTILS_HPP
 
-#include <boost/cstdint.hpp>
 #include <fstream>
 #include <iostream>
 
