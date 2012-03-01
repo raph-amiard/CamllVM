@@ -48,8 +48,6 @@ void debug(value Arg) {
 // It is compatible with the regular ocaml runtime's closure layout 
 
 value makeClosure(value NVars, value FPtr, value NbArgs) {
-    printf("INTO MAKECLOSURE\n");
-    printf("NB ARGS = %ld\n", NbArgs);
     value Closure;
     int BlockSize = 3 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
@@ -57,7 +55,6 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     Code_val(Closure) = (code_t)FPtr;
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
-    printf("RETURNING FROM MAKECLOSURE\n");
     return Closure;
 }
 
@@ -66,7 +63,7 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
     Field(Closure, VarIdx + 1) = Value;
 }
 
-value apply(value Closure, int NbArgs, value* Args) {
+value apply(value Closure, value NbArgs, value* Args) {
 
     int ArgsSize = NbArgs;
     value CClosure = Closure;
