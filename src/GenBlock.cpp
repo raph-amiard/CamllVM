@@ -78,8 +78,6 @@ Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
 
     Value* Ret = nullptr;
 
-    cout << "INGETSTACKAT BLOCK "<< name() << "\n";
-    //dumpStack();
     if (n >= Stack.size()) {
         auto NbPrevBlocks = PrBlocks.size();
         int PrevStackPos = n - Stack.size();
@@ -110,9 +108,6 @@ Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
 
     Ret = getMutatedValue(Ret);
 
-    Ret->dump();
-
-    cout << "OUTGETSTACKAT\n";
     return Ret;
 }
 
@@ -261,7 +256,6 @@ void GenBlock::makeApply(size_t n) {
         }
 
         auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo());
-        ArrayPtr->dump();
         ArgsV.push_back(Accu);
         ArgsV.push_back(ConstInt(n));
         ArgsV.push_back(ArrayPtr);
@@ -522,9 +516,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
         case BRANCHIFNOT: {
-            cout << "CREATEBOOLVALOU\n";
             auto BoolVal = Builder->CreateIntCast(Accu, Type::getInt1Ty(getGlobalContext()), getValType());
-            cout << "CREATECONDBR\n";
             printf("Boolval : %p, NoBrBlock: %p, BrBlock: %p \n", BoolVal, NoBrBlock->LlvmBlocks.front(), BrBlock->LlvmBlocks.front());
             Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(),BrBlock->LlvmBlocks.front());
             break;
