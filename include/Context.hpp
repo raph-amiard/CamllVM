@@ -11,7 +11,7 @@ protected:
 
 public:
     virtual ~Context() {};
-    void init(std::string FileName, int PrintFrom, int EraseFirst, int EraseLast);
+    void init(std::string FileName, int EraseFrom, int EraseFirst, int EraseLast);
     virtual void generateMod();
     virtual void compile();
     virtual void exec();

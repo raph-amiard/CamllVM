@@ -34,9 +34,7 @@ static uintnat heap_chunk_init = Heap_chunk_def;
 static uintnat heap_size_init = Init_heap_def;
 static uintnat max_stack_init = Max_stack_def;
 
-void Context::init(string _FileName, int PrintFrom, int EraseFirst, int EraseLast) {
-
-    cout << "LOL?" << endl;
+void Context::init(string _FileName, int EraseFrom, int EraseFirst, int EraseLast) {
 
     char * shared_lib_path, * shared_libs, * req_prims;
     struct exec_trailer Trail;
@@ -87,7 +85,6 @@ void Context::init(string _FileName, int PrintFrom, int EraseFirst, int EraseLas
     annotateNodes(Instructions);
 
     if (EraseFirst != EraseLast) {
-        std::cout << Instructions.size() << std::endl;
         std::vector<ZInstruction*>::iterator Beginning, Ending;
         if (EraseFirst > 0)
             Beginning = Instructions.begin() + EraseFirst;
@@ -100,15 +97,16 @@ void Context::init(string _FileName, int PrintFrom, int EraseFirst, int EraseLas
             Ending = Instructions.end() + EraseLast;
         
         Instructions.erase(Beginning, Ending);
-        std::cout << Instructions.size() << std::endl;
     }
 
-    printInstructions(Instructions, true, PrintFrom); // 941 is just the number of the instruction at which the program normally begins when compiled with ocamlc
+    Instructions.erase(Instructions.begin(), Instructions.begin() + EraseFrom);
+
+    printInstructions(Instructions, true); 
 }
 
 
 void Context::generateMod() {
-    std::cout << "generateMod\n";
+    printf("%p\n", &Instructions);
     GenModuleCreator GMC(&Instructions);
     Mod = GMC.generate(0);
     Mod->Print();
@@ -145,9 +143,7 @@ void Context::exec() {
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
     char* (*FP)() = (char* (*)())(intptr_t)FPtr;
     long a = (long) FP();
-    cout << "A = " << a << endl;
-
-    cout << "WEREATHEND" << endl;
+    cout << a << endl;
 
 }
 
