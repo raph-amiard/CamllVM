@@ -11,17 +11,22 @@ Z3_PATH = "../../bin/Z3"
 
 test_num = 1
 
+def test_print(msg):
+    print "{0} {1}".format(colored("[{0}]".format(test_num), "blue"), msg)
+
+
 def test_fail(test_name, message):
-    print colored("{0}: Test {1} failed ! {2}".format(test_num, test_name, message), "red")
+    test_print(colored("Test {1} failed ! {2}".format(test_num, test_name, message)))
+
 
 def compile_and_run(file_path):
-    print "{1}: Running test {0}".format(file_path, test_num)
+    test_print("Running test {0}".format(file_path))
 
     try:
         compile_output = subprocess.check_output(["ocamlc", file_path + ".ml"], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError, e:
         test_fail(file_path, "Compilation error")
-        print "Compilation output : "
+        test_print("Compilation output : ")
         print e.output
         raise e
 
@@ -35,7 +40,7 @@ def compile_and_run(file_path):
         out = subprocess.check_output(z3_call_vect, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError, e:
         test_fail(file_path, "Non zero return code")
-        print colored("Output dumped to file test_fail.txt", "red")
+        test_print(colored("Output dumped to file test_fail.txt", "red"))
         f = open("../../test_fail.txt", "w")
         f.write(e.output)
         raise e
@@ -46,14 +51,14 @@ def compile_and_run(file_path):
         outres = open(file_path + ".out").read().strip()
         if res != outres:
             test_fail(file_path, "Non expected test value")
-            print "{0}: Expected value: {1}".format(test_num, outres)
-            print "{0}: Test out value: {1}".format(test_num, res)
+            test_print("Expected value: {1}".format(outres))
+            test_print("Test out value: {1}".format(res))
             print out
             raise Exception()
     except IOError:
         pass
 
-    print colored("{1}: Test {0} succeeded !".format(file_path, test_num), "green")
+    test_print(colored("Test {0} succeeded !".format(file_path), "green"))
 
 
 os.chdir("test/testfiles")

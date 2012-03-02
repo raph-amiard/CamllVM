@@ -244,14 +244,13 @@ public:
     inline void Print(bool LineNums = false) {
         if (LineNums) std::cout << idx << ": ";
         std::cout << Name() << " ";
-        for (int i = 0; i < Arity(); i++) {
-            std::cout << Args[i] << " ";
-        }
-        if (this->isClosureRec()) {
-            for (int i = 0; i < Args[0]; i++) {
+
+        for (int i = 0; i < Arity(); i++) std::cout << Args[i] << " ";
+
+        if (this->isClosureRec())
+            for (int i = 0; i < Args[0]; i++) 
                 std::cout << this->ClosureRecFns[i] << " ";
-            }
-        }
+
         std::cout << std::endl;
     }
 
