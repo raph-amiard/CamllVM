@@ -1,8 +1,9 @@
-    #include <ocaml_runtime/mlvalues.h>
-    #include <ocaml_runtime/major_gc.h>
-    #include <ocaml_runtime/memory.h>
-    #include <ocaml_runtime/prims.h>
-    #include <stdio.h>
+#include <ocaml_runtime/mlvalues.h>
+#include <ocaml_runtime/major_gc.h>
+#include <ocaml_runtime/memory.h>
+#include <ocaml_runtime/prims.h>
+#include <stdio.h>
+#include <setjmp.h>
 
 /* GC interface */
 
@@ -105,9 +106,35 @@ value apply(value Closure, value NbArgs, value* Args) {
 }
 
 value getBlockSize(value Block) { return Wosize_val(Block); }
+
 value getField(value Block, value Idx) { return Field(Block, Idx); }
+
 void setField(value Field, value Idx, value NewVal) {
     Modify(&Field(Field, Idx), NewVal);
+}
+
+value makeBlock1(value tag, value Val1) {
+      value block;
+      Alloc_small(block, 1, (tag_t)tag);
+      Field(block, 0) = Val1;
+      return block;
+}
+
+value makeBlock2(value tag, value Val1, value Val2) {
+      value block;
+      Alloc_small(block, 2, (tag_t)tag);
+      Field(block, 0) = Val1;
+      Field(block, 1) = Val2;
+      return block;
+}
+
+value makeBlock3(value tag, value Val1, value Val2, value Val3) {
+      value block;
+      Alloc_small(block, 3, (tag_t)tag);
+      Field(block, 0) = Val1;
+      Field(block, 1) = Val2;
+      Field(block, 2) = Val3;
+      return block;
 }
 
 // ============================= C CALLS ============================== //
@@ -141,21 +168,61 @@ value primCall3(value Prim, value Val1, value Val2, value Val3) {
 }
 
 value primCall4(value Prim, value Val1, value Val2, value Val3, value Val4) {
-  Setup_for_c_call;
-  value Ret = Primitive(Prim)(Val1, Val2, Val3, Val4);
-  Restore_after_c_call;
-  return Ret;
+    Setup_for_c_call;
+    value Ret = Primitive(Prim)(Val1, Val2, Val3, Val4);
+    Restore_after_c_call;
+    return Ret;
 }
 
 value primCall5(value Prim, value Val1, value Val2, value Val3, value Val4, value Val5) {
-  Setup_for_c_call;
-  value Ret = Primitive(Prim)(Val1, Val2, Val3, Val4, Val5);
-  Restore_after_c_call;
-  return Ret;
+    Setup_for_c_call;
+    value Ret = Primitive(Prim)(Val1, Val2, Val3, Val4, Val5);
+    Restore_after_c_call;
+    return Ret;
 }
 
 // ================================= GLOBAL DATA ============================ //
 
 value getGlobal(value Idx) {
-  return Field(caml_global_data, Idx);
+    return Field(caml_global_data, Idx);
+}
+
+void setGlobal(value Idx, value Val) {
+    Modify(&Field(caml_global_data, Idx), Val);
+}
+
+
+// ============================ EXCEPTION HANDLING ========================= //
+
+typedef struct _JmpBufList {
+    struct _JmpBufList* Next;
+    jmp_buf JmpBuf;
+} JmpBufList;
+
+JmpBufList* NextExceptionContext;
+value CurrentExceptionVal;
+
+value addExceptionContext() {
+    JmpBufList* NewContext = malloc(sizeof(JmpBufList));
+    NewContext->Next = NextExceptionContext;
+    NextExceptionContext = NewContext;
+
+    if (setjmp(NewContext->JmpBuf) == 0) return 0;
+    else {
+        JmpBufList* Ctx = NextExceptionContext;
+        NextExceptionContext = Ctx->Next;
+        free(Ctx);
+        return CurrentExceptionVal;
+    }
+}
+
+void removeExceptionContext() {
+    JmpBufList* Context = NextExceptionContext;
+    NextExceptionContext = Context->Next;
+    free(Context);
+}
+
+void throwException(value ExcVal) {
+    CurrentExceptionVal = ExcVal;
+    longjmp(NextExceptionContext->JmpBuf, 1);
 }

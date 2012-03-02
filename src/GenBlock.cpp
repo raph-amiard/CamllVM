@@ -94,6 +94,7 @@ Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
             } else {
                 auto B = Builder->GetInsertBlock();
                 Builder->SetInsertPoint(LlvmBlock);
+                cout << "CREATE PHI IN GETSTAKCAT §!!!!!!!!!!!!!!!!!!!!" << endl;
                 PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "phi");
                 PHINodes.push_back(make_pair(PHI, PrevStackPos));
                 Builder->SetInsertPoint(B);
@@ -153,8 +154,8 @@ Value* GenBlock::stackPop() {
     return Val;
 }
 
-void GenBlock::push() { 
-    if (Accu == nullptr) {
+void GenBlock::push(bool CreatePhi) { 
+    if (Accu == nullptr && CreatePhi) {
         auto PHI = Builder->CreatePHI(getValType(), PreviousBlocks.size());
         PHINodes.push_back(make_pair(PHI, -1));
         Accu = PHI;
@@ -223,13 +224,15 @@ Value* ConstInt(uint64_t val) {
 }
 
 void GenBlock::makeCheckedCall(Value* Callee, ArrayRef<Value*> Args) {
+    /*
     if (UnwindBlocks.size() > 0) {
         auto Blocks = addBlock();
         Accu = Builder->CreateInvoke(Callee, Blocks.second, UnwindBlocks.front(), Args);
         Builder->SetInsertPoint(Blocks.second);
     } else {
+    */
         Accu = Builder->CreateCall(Callee, Args);
-    }
+    //}
 }
 
 void GenBlock::makeApply(size_t n) {
@@ -363,14 +366,30 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             push(); push(); push();
             break;
 
-        case PUSHTRAP:
-            UnwindBlocks.push_front(Function->Blocks[Inst->Args[0]]->LlvmBlocks.front());
-            push();push();push();push();
+        case PUSHTRAP: {
+            // UnwindBlocks.push_front(Function->Blocks[Inst->Args[0]]->LlvmBlocks.front());
+            auto addExcFn = getFunction("addExceptionContext");
+            auto ExcVal = Builder->CreateCall(addExcFn);
+            auto BoolVal = Builder->CreateIntCast(ExcVal, Type::getInt1Ty(getGlobalContext()), getValType());
+            auto Blocks = addBlock();
+            auto TrapBlock = Function->Blocks[Inst->Args[0]];
+            TrapBlock->Accu = ExcVal;
+            Builder->CreateCondBr(BoolVal, TrapBlock->LlvmBlocks.front(), Blocks.second);
+            for (int i=0;i<4;i++) push(false);
+            Builder->SetInsertPoint(Blocks.second);
             break;
-        case POPTRAP:
-            UnwindBlocks.pop_front();
+        }
+        case POPTRAP: {
+            //UnwindBlocks.pop_front();
+            Builder->CreateCall(getFunction("removeExceptionContext"));
             stackPop();stackPop();stackPop();stackPop();
             break;
+        }
+        case RAISE: {
+            Builder->CreateCall(getFunction("throwException"), Accu);
+            Builder->CreateRet(Accu);
+            break;
+        }
 
 
         case ACC0: acc(0); break;
@@ -449,6 +468,32 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             MutatedVals[getStackAt(Inst->Args[0])] = Accu;
             break;
 
+        case PUSHGETGLOBAL:
+            push();
+        case GETGLOBAL:
+            Accu = Builder->CreateCall(getFunction("getGlobal"), ConstInt(Inst->Args[0]));
+            break;
+
+        case MAKEBLOCK1:
+            Accu = Builder->CreateCall2(getFunction("makeBlock1"), 
+                                        ConstInt(Inst->Args[0]), 
+                                        Accu);
+            break;
+        case MAKEBLOCK2:
+            Accu = Builder->CreateCall3(getFunction("makeBlock2"), 
+                                        ConstInt(Inst->Args[0]), 
+                                        Accu, 
+                                        getStackAt(0));
+            stackPop();
+            break;
+        case MAKEBLOCK3:
+            Accu = Builder->CreateCall4(getFunction("makeBlock3"), 
+                                        ConstInt(Inst->Args[0]), 
+                                        Accu, 
+                                        getStackAt(0), 
+                                        getStackAt(1));
+            stackPop(); stackPop();
+            break;
 
         case SETFIELD0: makeSetField(0); break;
         case SETFIELD1: makeSetField(1); break;

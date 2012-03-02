@@ -40,7 +40,6 @@ Function* GenFunction::CodeGen() {
 
     // Make function type
     vector<Type*> ArgTypes(this->Arity, getValType());
-    //auto RetType = this->Id == MAIN_FUNCTION_ID ? Type::getVoidTy(getGlobalContext()) : getValType();
     auto FT = FunctionType::get(getValType(), ArgTypes, false);
 
     // Create the llvm Function object

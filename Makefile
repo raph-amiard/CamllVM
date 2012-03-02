@@ -27,7 +27,7 @@ ${OBJ}/%.o: ${SRC}/%.cpp ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
 	${CC} -c -o $@ $<
 
 stdlib:
-	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/CStdLib.c
+	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib/CStdLib.c
 	${CSTDLIBCC} -std=c++0x -S -emit-llvm -o ${BIN}/ZamSimpleInterpreter.ll ${SRC}/zsi/ZamSimpleInterpreter.cpp
 
 
