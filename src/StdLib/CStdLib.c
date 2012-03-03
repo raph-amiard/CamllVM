@@ -62,6 +62,13 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     return Closure;
 }
 
+// Does not work: Args and NbRemArgs are not taken into account
+void closureSetNestedClos(value Closure, value ClosIdx, value FPtr, value NbArgs) {
+    int i = (ClosIdx*2) - 1;
+    Field(Closure, i) = Make_header(i * 2, Infix_tag, Caml_white);  /* color irrelevant. */
+    Field(Closure, i + 1) = (code_t)FPtr;
+}
+
 void closureSetVar(value Closure, value VarIdx, value Value) {
     //printf("INTO CLOSURESETVAR\n\n");
     Field(Closure, VarIdx + 1) = Value;
