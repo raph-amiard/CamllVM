@@ -16,7 +16,7 @@ def test_print(msg):
 
 
 def test_fail(test_name, message):
-    test_print(colored("Test {1} failed ! {2}".format(test_num, test_name, message)))
+    test_print(colored("Test {1} failed ! {2}".format(test_num, test_name, message), "red"))
 
 
 def compile_and_run(file_path):
