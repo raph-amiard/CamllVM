@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <boost/assign/list_of.hpp>
 #include <map>
 
 #include <EndianUtils.hpp>
@@ -205,22 +206,24 @@ enum InstrAnnotation {
 };
 
 
-static std::map<int, int> CodeOffsetArgs = {
-    {PUSH_RETADDR, 0},
-    {CLOSURE, 1},
-    {BRANCH, 0},
-    {BRANCHIF, 0},
-    {BRANCHIFNOT, 0},
-    {PUSHTRAP, 0},
-    {BEQ, 1},
-    {BNEQ, 1},
-    {BLTINT, 1},
-    {BLEINT, 1},
-    {BGTINT, 1},
-    {BGEINT, 1},
-    {BULTINT, 1},
-    {BUGEINT, 1},
-};
+
+static std::map<int, int> CodeOffsetArgs =boost::assign::map_list_of 
+( PUSH_RETADDR, 0)
+( CLOSURE, 1)
+( BRANCH, 0)
+( BRANCHIF, 0)
+( BRANCHIFNOT, 0)
+( PUSHTRAP, 0)
+   ( BEQ, 1)
+   ( BNEQ, 1)
+   ( BLTINT, 1)
+   ( BLEINT, 1)
+   ( BGTINT, 1)
+   ( BGEINT, 1)
+   ( BULTINT, 1)
+   ( BUGEINT, 1);
+
+
 
 /**
  * Struct representing a concrete instruction in a bytecode file
