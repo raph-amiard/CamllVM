@@ -39,7 +39,7 @@ void caml_set_fields (char *bp, unsigned long start, unsigned long filler)
 
 #endif /* DEBUG */
 
-uintnat caml_verb_gc = 0x100;
+uintnat caml_verb_gc = 0x000;
 
 void caml_gc_message (int level, char *msg, uintnat arg)
 {
