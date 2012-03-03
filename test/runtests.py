@@ -33,7 +33,10 @@ def compile_and_run(file_path):
     os.remove(file_path + ".cmo")
     os.remove(file_path + ".cmi")
 
-    options = open(file_path + ".opts").read().split(" ")
+    try:
+        options = open(file_path + ".opts").read().split(" ")
+    except IOError:
+        options = []
     z3_call_vect = [Z3_PATH, "a.out"] + options
 
     try:

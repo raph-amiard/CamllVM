@@ -635,6 +635,9 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
+        case CHECK_SIGNALS:
+            // TODO: Understand and implement ocaml's event system
+            break;
 
         default:
             printTab(2);
