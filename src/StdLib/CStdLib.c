@@ -20,7 +20,7 @@
 
 value Env = 0;
 void setEnv(value E) {
-    //printf("IN SETENVVV\n\n");
+    ////printf("IN SETENVVV\n\n");
     Env = E;
 }
 value getEnv() {
@@ -29,7 +29,7 @@ value getEnv() {
 }
 
 void debug(value Arg) {
-    printf("DEBUG : %ld\n", (long) Arg);
+    //printf("DEBUG : %ld\n", (long) Arg);
 }
 
 // Closure handling is a little complex. 
@@ -49,6 +49,7 @@ void debug(value Arg) {
 // It is compatible with the regular ocaml runtime's closure layout 
 
 value makeClosure(value NVars, value FPtr, value NbArgs) {
+    //printf("IN MAKE CLOSURE\n");
     value Closure;
     int BlockSize = 3 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
@@ -56,6 +57,8 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     Code_val(Closure) = (code_t)FPtr;
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
+    //printf("CLOSURE ADDR: %p\n", (void*)Closure);
+    //printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
     return Closure;
 }
 
@@ -66,6 +69,13 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
 
 value apply(value Closure, value NbArgs, value* Args) {
 
+    //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Closure);
+    //printf("ARGS : ");
+    for (int i = 0; i < NbArgs; i++) {
+        //printf("%ld ", Args[i]);
+    }
+    //printf("\n");
+
     int ArgsSize = NbArgs;
     value CClosure = Closure;
 
@@ -74,6 +84,7 @@ value apply(value Closure, value NbArgs, value* Args) {
 
         // Get the number of args the current closure needs
         int Size = Wosize_val(CClosure);
+        //printf("SIZE = %d\n", Size);
         int NbRemArgs = Field(CClosure, (Size - 1));
 
         // Fill the closure with args until it's full 
@@ -113,6 +124,10 @@ void setField(value Field, value Idx, value NewVal) {
     Modify(&Field(Field, Idx), NewVal);
 }
 
+value getAtom(value Idx) {
+    return Atom(Idx);
+}
+
 value makeBlock1(value tag, value Val1) {
       value block;
       Alloc_small(block, 1, (tag_t)tag);
@@ -147,30 +162,38 @@ value primCall(value Prim) {
 }
 
 value primCall1(value Prim, value Val1) {
+  //printf("In primCall1, Prim number = %ld, Val1 = %p\n", Prim, (void*)Val1);
   Setup_for_c_call;
   value Ret = Primitive(Prim)(Val1);
   Restore_after_c_call;
+  //printf("PrimCall Result: %ld\n", Ret);
   return Ret;
 }
 
 value primCall2(value Prim, value Val1, value Val2) {
+  //printf("In primCall2, Prim number = %ld, Val1 = %p, Val2 = %p\n", Prim, (void*)Val1, (void*)Val2);
   Setup_for_c_call;
   value Ret = Primitive(Prim)(Val1, Val2);
   Restore_after_c_call;
+  //printf("PrimCall Result: %ld\n", Ret);
   return Ret;
 }
 
 value primCall3(value Prim, value Val1, value Val2, value Val3) {
+  //printf("In primCall3, Prim number = %ld, Val1 = %p, Val2 = %p, Val3 = %p\n", Prim, (void*)Val1, (void*)Val2, (void*)Val3);
   Setup_for_c_call;
   value Ret = Primitive(Prim)(Val1, Val2, Val3);
   Restore_after_c_call;
+  //printf("PrimCall Result: %ld\n", Ret);
   return Ret;
 }
 
 value primCall4(value Prim, value Val1, value Val2, value Val3, value Val4) {
+  //printf("In primCall4, Prim number = %ld, Val1 = %p, Val2 = %p, Val3 = %p, Val4 = %p\n", Prim, (void*)Val1, (void*)Val2, (void*)Val3, (void*)Val4);
     Setup_for_c_call;
     value Ret = Primitive(Prim)(Val1, Val2, Val3, Val4);
     Restore_after_c_call;
+  //printf("PrimCall Result: %ld\n", Ret);
     return Ret;
 }
 
@@ -184,10 +207,15 @@ value primCall5(value Prim, value Val1, value Val2, value Val3, value Val4, valu
 // ================================= GLOBAL DATA ============================ //
 
 value getGlobal(value Idx) {
-    return Field(caml_global_data, Idx);
+    //printf("In get global number %ld\n", Idx);
+    value Glob = Field(caml_global_data, Idx);
+    //printf("Global = %p\n", (void*)Glob);
+    return Glob;
 }
 
 void setGlobal(value Idx, value Val) {
+    //printf("In set global number %ld\n", Idx);
+    //printf("Global = %p\n", (void*)Val);
     Modify(&Field(caml_global_data, Idx), Val);
 }
 

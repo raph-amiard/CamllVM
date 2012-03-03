@@ -1,3 +1,4 @@
+#include <Utils.hpp>
 #include <CodeGen.hpp>
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/LLVMContext.h"
@@ -53,12 +54,9 @@ Function* GenFunction::CodeGen() {
     for (auto BlockP : Blocks) {
         BlockP.second->CodeGen();
         BlockP.second->genTermInst();
-        BlockP.second->dumpStack();
-        cout << BlockP.second->LlvmBlocks.size() << endl;
+        DEBUG(BlockP.second->dumpStack();)
         for (auto BBlock : BlockP.second->LlvmBlocks)
             LlvmFunc->getBasicBlockList().push_back(BBlock);
-        cout << "DUMPING Das FUNCTION\n";
-        LlvmFunc->dump();
     }
 
 
@@ -71,7 +69,6 @@ Function* GenFunction::CodeGen() {
         this->generateApplierFunction();
 
     // Verify if the function is well formed
-    LlvmFunc->dump();
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;

@@ -2,6 +2,7 @@
 #define CONTEXT_HPP
 
 #include <string.h>
+#include <Utils.hpp>
 #include <iostream>
 
 extern "C" {
@@ -101,15 +102,14 @@ void Context::init(string _FileName, int EraseFrom, int EraseFirst, int EraseLas
 
     Instructions.erase(Instructions.begin(), Instructions.begin() + EraseFrom);
 
-    printInstructions(Instructions, true); 
+    DEBUG(printInstructions(Instructions, true);)
 }
 
 
 void Context::generateMod() {
-    printf("%p\n", &Instructions);
     GenModuleCreator GMC(&Instructions);
     Mod = GMC.generate(0);
-    Mod->Print();
+    DEBUG(Mod->Print();)
 }
 
 
@@ -117,15 +117,15 @@ void Context::compile() {
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
 
-    for (auto FuncP : Mod->Functions) {
-        FuncP.second->LlvmFunc->dump();
-    }
-    MainFunc->LlvmFunc->dump();
+    DEBUG(
+        for (auto FuncP : Mod->Functions)
+            FuncP.second->LlvmFunc->dump();
+        MainFunc->LlvmFunc->dump();
+    )
 }
 
 void Context::exec() {
     auto MainFunc = Mod->MainFunction;
-    cout << "========================================================" << endl;
 
     /*
     Mod->PM->run(*Mod->TheModule);
@@ -135,15 +135,10 @@ void Context::exec() {
     Mod->FPM->run(*MainFunc->LlvmFunc);
     */
 
-    for (auto FuncP : Mod->Functions) {
-        FuncP.second->LlvmFunc->dump();
-    }
-    MainFunc->LlvmFunc->dump();
-
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
     char* (*FP)() = (char* (*)())(intptr_t)FPtr;
     long a = (long) FP();
-    cout << a << endl;
+    DEBUG(cout << a << endl;)
 
 }
 

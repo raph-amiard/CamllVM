@@ -20,7 +20,6 @@ GenModule::GenModule() {
     SMDiagnostic Diag;
     auto StdLibPath = getExecutablePath();
     StdLibPath.append("StdLib.ll");
-    cout << StdLibPath << endl;
     TheModule = ParseIRFile(StdLibPath, Diag, getGlobalContext()); //new Module("testmodule", getGlobalContext());
     for (Function& Func : TheModule->getFunctionList()) {
         if (Func.getName() == "makeClosure") {

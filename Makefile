@@ -13,7 +13,7 @@ LIBS= -lboost_program_options
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
 CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE}
 
-OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule.o $(OBJ)/GenModuleCreator.o $(OBJ)/Instructions.o $(OBJ)/SimpleContext.o
+OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule.o $(OBJ)/GenModuleCreator.o $(OBJ)/Instructions.o $(OBJ)/SimpleContext.o $(OBJ)/main.o $(OBJ)/Utils.o
 
 all: main
 
@@ -32,7 +32,7 @@ stdlib:
 
 
 main: $(OBJECTS) ocaml_runtime stdlib
-	${CC} ${LIBS} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 ${SRC}/main.cpp $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
+	${CC} ${LIBS} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
 clean:
