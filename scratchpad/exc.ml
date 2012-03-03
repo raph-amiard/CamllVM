@@ -16,7 +16,7 @@ let b () =
 let a () =
   try
     b ()
-  with Exc2(a) -> ()
+  with Exc2(a) -> (print_int 5;print_newline ())
 ;;
 
 a ();;

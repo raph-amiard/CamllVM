@@ -386,17 +386,24 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case PUSHTRAP: {
-            // UnwindBlocks.push_front(Function->Blocks[Inst->Args[0]]->LlvmBlocks.front());
-            auto addExcFn = getFunction("addExceptionContext");
-            auto ExcVal = Builder->CreateCall(addExcFn);
-            auto BoolVal = Builder->CreateIntCast(ExcVal, Type::getInt1Ty(getGlobalContext()), getValType());
+            auto Buf = Builder->CreateCall(getFunction("getNewBuffer"));
+            auto SetJmpFunc = getFunction("_setjmp");
+            auto JmpBufType = Function->Module->TheModule->getTypeByName("struct.__jmp_buf_tag")->getPointerTo();
+            auto JmpBuf = Builder->CreateBitCast(Buf, JmpBufType);
+            auto SetJmpRes = Builder->CreateCall(SetJmpFunc, JmpBuf);
+            auto BoolVal = Builder->CreateIntCast(SetJmpRes, Type::getInt1Ty(getGlobalContext()), getValType());
             auto Blocks = addBlock();
             auto TrapBlock = Function->Blocks[Inst->Args[0]];
-            TrapBlock->Accu = ExcVal;
             Builder->CreateCondBr(BoolVal, TrapBlock->LlvmBlocks.front(), Blocks.second);
-            for (int i=0;i<4;i++) push(false);
+
+            Builder->SetInsertPoint(TrapBlock->LlvmBlock);
+            TrapBlock->Accu = Builder->CreateCall(getFunction("getExceptionValue"));
+            Builder->CreateCall(getFunction("removeExceptionContext"));
+
             Builder->SetInsertPoint(Blocks.second);
+            for (int i=0;i<4;i++) push(false);
             break;
+
         }
         case POPTRAP: {
             //UnwindBlocks.pop_front();
@@ -603,30 +610,35 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
+        case EQ:
+            Accu = Builder->CreateICmpEQ(Accu, stackPop());
+            break;
+
         case BEQ:
-            TmpVal = Builder->CreateICmpEQ(ConstInt(Inst->Args[0]), intVal(Accu));
+            TmpVal = Builder->CreateICmpEQ(ConstInt(Val_int(Inst->Args[0])), Accu);
             goto makebr;
         case BNEQ:
-           TmpVal = Builder->CreateICmpNE(ConstInt(Inst->Args[0]), intVal(Accu));
+           TmpVal = Builder->CreateICmpNE(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BLTINT:
-           TmpVal = Builder->CreateICmpSLT(ConstInt(Inst->Args[0]), intVal(Accu));
+           TmpVal = Builder->CreateICmpSLT(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BLEINT:
            TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BGTINT:
-           TmpVal = Builder->CreateICmpSGT(ConstInt(Inst->Args[0]), intVal(Accu));
+           TmpVal = Builder->CreateICmpSGT(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BGEINT:
-           TmpVal = Builder->CreateICmpSGE(ConstInt(Inst->Args[0]), intVal(Accu));
+           TmpVal = Builder->CreateICmpSGE(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BULTINT:
-           TmpVal = Builder->CreateICmpULT(ConstInt(Inst->Args[0]), intVal(Accu));
+           TmpVal = Builder->CreateICmpULT(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
         case BUGEINT:
-           TmpVal = Builder->CreateICmpUGE(ConstInt(Inst->Args[0]), intVal(Accu));
+           TmpVal = Builder->CreateICmpUGE(ConstInt(Val_int(Inst->Args[0])), Accu);
            goto makebr;
+
 
         makebr: {
             BasicBlock* LBrBlock = BrBlock->LlvmBlocks.front();

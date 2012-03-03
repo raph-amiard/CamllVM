@@ -29,7 +29,7 @@ value getEnv() {
 }
 
 void debug(value Arg) {
-    //printf("DEBUG : %ld\n", (long) Arg);
+    printf("DEBUG : %ld\n", (long) Arg);
 }
 
 // Closure handling is a little complex. 
@@ -70,11 +70,6 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
 value apply(value Closure, value NbArgs, value* Args) {
 
     //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Closure);
-    //printf("ARGS : ");
-    for (int i = 0; i < NbArgs; i++) {
-        //printf("%ld ", Args[i]);
-    }
-    //printf("\n");
 
     int ArgsSize = NbArgs;
     value CClosure = Closure;
@@ -116,9 +111,44 @@ value apply(value Closure, value NbArgs, value* Args) {
     return CClosure;
 }
 
+/*
+#define MAPPLY(a) \
+    { FPtr = (value(*)(value)) Code_val(CClosure); \
+    value OldEnv = Env; \
+    Env = CClosure; \
+    CClosure = FPtr(CClosure); \
+    Env = OldEnv };
+
+
+value apply1(value Closure, value Arg1) {
+    return 0;
+}
+
+value apply2(value Closure, value Arg1, value Arg2) {
+
+    value CClosure = Closure;
+    int Size = Wosize_val(CClosure);
+    int NbRemArgs = Field(CClosure, (Size - 1));
+    value (*FPtr)(value);
+    value OldEnv;
+
+    Field(CClosure, (Size - 1 - NbRemArgs)) = Arg1;
+    NbRemArgs--; 
+    if (--NbRemArgs == 0) {
+    }
+    Field(CClosure, (Size - 1 - NbRemArgs)) = Arg2;
+    NbRemArgs--; if (--NbRemArgs == 0) {}
+
+    ret_lbl: return CClosure;
+}
+*/
+
 value getBlockSize(value Block) { return Wosize_val(Block); }
 
-value getField(value Block, value Idx) { return Field(Block, Idx); }
+value getField(value Block, value Idx) { 
+    //printf("Getfield : %p\n", (void*)Field(Block, Idx)); 
+    return Field(Block, Idx); 
+}
 
 void setField(value Field, value Idx, value NewVal) {
     Modify(&Field(Field, Idx), NewVal);
@@ -225,21 +255,39 @@ void setGlobal(value Idx, value Val) {
 typedef struct _JmpBufList {
     struct _JmpBufList* Next;
     jmp_buf JmpBuf;
+    value Env;
 } JmpBufList;
 
 JmpBufList* NextExceptionContext;
 value CurrentExceptionVal;
 
+char* getNewBuffer() {
+    JmpBufList* NewContext = malloc(sizeof(JmpBufList));
+    NewContext->Next = NextExceptionContext;
+    NewContext->Env = Env;
+    NextExceptionContext = NewContext;
+    return (char*)NewContext->JmpBuf;
+}
+
+value getExceptionValue() {
+    return CurrentExceptionVal;
+}
+
 value addExceptionContext() {
+    printf("IN ADD EXCEPTION CONTEXT\n");
     JmpBufList* NewContext = malloc(sizeof(JmpBufList));
     NewContext->Next = NextExceptionContext;
     NextExceptionContext = NewContext;
 
-    if (setjmp(NewContext->JmpBuf) == 0) return 0;
-    else {
+    if (setjmp(NewContext->JmpBuf) == 0) {
+        printf("RETURNING FROM ADD EXCEPTION CONTEXT NORMALLY\n");
+        return 0;
+    } else {
+        printf("RETURNING FROM A THROW\n");
         JmpBufList* Ctx = NextExceptionContext;
         NextExceptionContext = Ctx->Next;
         free(Ctx);
+        printf("WE OUTTA THERE\n");
         return CurrentExceptionVal;
     }
 }
@@ -252,5 +300,6 @@ void removeExceptionContext() {
 
 void throwException(value ExcVal) {
     CurrentExceptionVal = ExcVal;
+    Env = NextExceptionContext->Env;
     longjmp(NextExceptionContext->JmpBuf, 1);
 }

@@ -127,19 +127,22 @@ void Context::compile() {
 void Context::exec() {
     auto MainFunc = Mod->MainFunction;
 
-    /*
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
     }
     Mod->FPM->run(*MainFunc->LlvmFunc);
-    */
+
+    DEBUG(
+        for (auto FuncP : Mod->Functions)
+            FuncP.second->LlvmFunc->dump();
+        MainFunc->LlvmFunc->dump();
+    )
 
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
-    char* (*FP)() = (char* (*)())(intptr_t)FPtr;
-    long a = (long) FP();
+    value (*FP)() = (value (*)())(intptr_t)FPtr;
+    value a = FP();
     DEBUG(cout << a << endl;)
-
 }
 
 #endif

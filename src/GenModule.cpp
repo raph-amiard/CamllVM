@@ -14,6 +14,12 @@ using namespace llvm;
 
 // ================ GenModule Implementation ================== //
 
+void setAlwaysInline(Function& Func) {
+    llvm::Attributes Attrs;
+    Attrs |= Attribute::AlwaysInline;
+    Func.addFnAttr(Attrs);
+}
+
 GenModule::GenModule() {
 
     InitializeNativeTarget();
@@ -23,9 +29,7 @@ GenModule::GenModule() {
     TheModule = ParseIRFile(StdLibPath, Diag, getGlobalContext()); //new Module("testmodule", getGlobalContext());
     for (Function& Func : TheModule->getFunctionList()) {
         if (Func.getName() == "makeClosure") {
-            llvm::Attributes Attrs;
-            Attrs |= Attribute::AlwaysInline;
-            Func.addFnAttr(Attrs);
+            setAlwaysInline(Func);
         }
     }
     Builder = new IRBuilder<>(getGlobalContext());
