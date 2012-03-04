@@ -48,6 +48,7 @@ GenBlock::GenBlock(int Id, GenFunction* Function) {
     this->Function = Function;
     this->Builder = Function->Module->Builder;
     this->Accu = nullptr;
+    this->StackOffset = 0;
 
     addBlock();
 }
@@ -73,11 +74,15 @@ std::string GenBlock::name() {
 }
 
 Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
+    return _getStackAt(n+StackOffset, IgnorePrevBlock)->Val;
+}
+
+StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
 
     std::list<GenBlock*> PrBlocks = PreviousBlocks;
     if (IgnorePrevBlock != nullptr) PrBlocks.remove(IgnorePrevBlock);
 
-    Value* Ret = nullptr;
+    StackValue* Ret = nullptr;
 
     if (n >= Stack.size()) {
         auto NbPrevBlocks = PrBlocks.size();
@@ -91,14 +96,14 @@ Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
             if (NbPrevBlocks == 0) {
                 throw std::logic_error("Bad stack access !");
             } else if (NbPrevBlocks == 1) {
-                Ret = PrBlocks.front()->getStackAt(PrevStackPos);
+                Ret = PrBlocks.front()->_getStackAt(PrevStackPos);
             } else {
                 auto B = Builder->GetInsertBlock();
                 Builder->SetInsertPoint(LlvmBlock);
                 PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "phi");
                 PHINodes.push_back(make_pair(PHI, PrevStackPos));
                 Builder->SetInsertPoint(B);
-                Ret = PHI;
+                Ret = new StackValue {PHI};
             }
             PrevStackCache[PrevStackPos] = Ret;
         }
@@ -112,7 +117,7 @@ Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
     return Ret;
 }
 
-Value* GenBlock::getMutatedValue(Value* Val) {
+StackValue* GenBlock::getMutatedValue(StackValue* Val) {
     auto It = MutatedVals.find(Val);
     if (It != MutatedVals.end())
         return getMutatedValue(It->second);
@@ -146,14 +151,17 @@ void GenBlock::handlePHINodes() {
 void GenBlock::dumpStack() {
     cout << "============== Stack For Block " << name() << " ==================" << endl;
     for (auto Val : Stack) printf("%p\n", Val);
-    for (auto Val : Stack) Val->dump();
+    for (auto Val : Stack) Val->Val->dump();
     cout << "==========================================================" << endl;
 }
 
 Value* GenBlock::stackPop() {
     auto Val = getStackAt(0);
-    // TODO: Consider previous blocks stacks
-    Stack.pop_front();
+    if (Stack.size() == 0) {
+        StackOffset++;
+    } else {
+        Stack.pop_front();
+    }
     return Val;
 }
 
@@ -163,7 +171,7 @@ void GenBlock::push(bool CreatePhi) {
         PHINodes.push_back(make_pair(PHI, -1));
         Accu = PHI;
     }
-    this->Stack.push_front(Accu); 
+    this->Stack.push_front(new StackValue {Accu}); 
 }
 void GenBlock::acc(int n) { 
     this->Accu = this->getStackAt(n); 
@@ -535,12 +543,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Accu = Builder->CreateICmpSGT(Accu, TmpVal);
             break;
         case NEQ:
-            TmpVal = stackPop();
-            Accu = Builder->CreateICmpNE(Accu, TmpVal);
+            Accu = Builder->CreateICmpNE(Accu, stackPop());
+            break;
+        case EQ:
+            Accu = Builder->CreateICmpEQ(Accu, stackPop());
             break;
 
         case ASSIGN:
-            MutatedVals[getStackAt(Inst->Args[0])] = Accu;
+            MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue {Accu};
             break;
 
         case PUSHGETGLOBAL:
@@ -659,9 +669,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
-        case EQ:
-            Accu = Builder->CreateICmpEQ(Accu, stackPop());
-            break;
 
         case BEQ:
             TmpVal = Builder->CreateICmpEQ(ConstInt(Val_int(Inst->Args[0])), Accu);

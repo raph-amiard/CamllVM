@@ -38,6 +38,10 @@ struct ClosureInfo {
     bool IsBare;
 };
 
+struct StackValue {
+    llvm::Value* Val;
+};
+
 class GenBlock : public CodeGen {
     friend class GenModuleCreator;
     friend class GenFunction;
@@ -67,8 +71,8 @@ private:
     std::vector<ZInstruction*> Instructions;
     
     // Stack handling
-    std::deque<llvm::Value*> Stack;
-    std::map<int, llvm::Value*> PrevStackCache;
+    std::deque<StackValue*> Stack;
+    std::map<int, StackValue*> PrevStackCache;
     llvm::Value* Accu;
 
     // Llvm block handling
@@ -81,8 +85,8 @@ private:
     // containing the result of the test
     llvm::Value* CondVal;
 
-    std::map<llvm::Value*, llvm::Value*> MutatedVals;
-    llvm::Value* getMutatedValue(llvm::Value* Val);
+    std::map<StackValue*, StackValue*> MutatedVals;
+    StackValue* getMutatedValue(StackValue* Val);
 
 public:
     GenBlock(int Id, GenFunction* Function);
@@ -106,6 +110,8 @@ public:
     void makeGetField(size_t n);
     void debug(llvm::Value* DbgVal);
 
+    size_t StackOffset;
+    StackValue* _getStackAt(size_t n, GenBlock* IgnorePrevBlock=nullptr);
     llvm::Value* getStackAt(size_t n, GenBlock* IgnorePrevBlock=nullptr);
     llvm::Value* stackPop();
 

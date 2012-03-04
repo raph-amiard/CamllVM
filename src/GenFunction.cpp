@@ -48,13 +48,13 @@ Function* GenFunction::CodeGen() {
 
     // Put the function arguments on the stack of the first block
     for (auto AI = LlvmFunc->arg_begin(); AI != LlvmFunc->arg_end(); ++AI)
-        FirstBlock->Stack.push_front(AI);
+        FirstBlock->Stack.push_front(new StackValue {AI});
 
     // Generate each block and put it in the function's list of blocks
     for (auto BlockP : Blocks) {
         BlockP.second->CodeGen();
         BlockP.second->genTermInst();
-        DEBUG(BlockP.second->dumpStack();)
+        //DEBUG(BlockP.second->dumpStack();)
         for (auto BBlock : BlockP.second->LlvmBlocks)
             LlvmFunc->getBasicBlockList().push_back(BBlock);
     }
