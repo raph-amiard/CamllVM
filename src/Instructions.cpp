@@ -38,11 +38,12 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
         }
 
         if (Inst->OpNum == CLOSUREREC) {
+            Pos++;
             for (int j = 0; j < Inst->Args[0]; j++) {
                 auto ArgVal = toBigEndian(*TabInst++);
-                Pos++;
                 Inst->ClosureRecFns[j] = Pos + ArgVal;
             }
+            Pos += Inst->Args[0] -1;
             InstsToAdjust.push_back(Inst);
         }
 
