@@ -659,12 +659,18 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
         case BRANCHIF: {
-            auto BoolVal = Builder->CreateICmpEQ(Accu, ConstInt(Val_false));
+            auto BoolVal = Accu;
+            if (Accu->getType() == getValType()) {
+                BoolVal = Builder->CreateICmpEQ(Accu, ConstInt(Val_false));
+            }
             Builder->CreateCondBr(BoolVal, BrBlock->LlvmBlocks.front(), NoBrBlock->LlvmBlocks.front());
             break;
         }
         case BRANCHIFNOT: {
-            auto BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false));
+            auto BoolVal = Accu;
+            if (Accu->getType() == getValType()) {
+                BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false));
+            }
             Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(),BrBlock->LlvmBlocks.front());
             break;
         }
