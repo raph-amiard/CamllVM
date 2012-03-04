@@ -10,6 +10,8 @@ A word of disclaimer
 
 This project is nothing but ideas at the moment, and most of them are not fixed yet. This github space is meant as a discussion space for the time being, and this disclaimer will be removed when runnable and useful code is put in this repo. *For the moment, all code you'll find here is scraps and implementation ideas*
 
+##### UPDATE : The projects now runs ocaml code, and implements a quite large subset of the ZAM instructions ! You can test it at will, even if some things won't work.
+
 Building the project
 --------------------
 
