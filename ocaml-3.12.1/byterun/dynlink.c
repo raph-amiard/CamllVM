@@ -14,6 +14,7 @@
 /* $Id: dynlink.c 9547 2010-01-22 12:48:24Z doligez $ */
 
 /* Dynamic loading of C primitives. */
+#include <stdio.h>
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -53,6 +54,7 @@ struct ext_table caml_shared_libs_path;
    then in the opened shared libraries (shared_libs) */
 static c_primitive lookup_primitive(char * name)
 {
+  //printf("PRIM NAME : %s\n", name);
   int i;
   void * res;
 

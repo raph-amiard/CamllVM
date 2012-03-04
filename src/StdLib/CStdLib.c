@@ -77,6 +77,7 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
 value apply(value Closure, value NbArgs, value* Args) {
 
     //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Closure);
+    //printf("ARG 1 = %p\n", Args[0]);
 
     int ArgsSize = NbArgs;
     value CClosure = Closure;
@@ -265,7 +266,7 @@ typedef struct _JmpBufList {
     value Env;
 } JmpBufList;
 
-JmpBufList* NextExceptionContext;
+JmpBufList* NextExceptionContext = NULL;
 value CurrentExceptionVal;
 
 char* getNewBuffer() {
@@ -306,6 +307,10 @@ void removeExceptionContext() {
 }
 
 void throwException(value ExcVal) {
+    if (!NextExceptionContext) {
+        printf("Uncatched Exception\n");
+        exit(0);
+    }
     CurrentExceptionVal = ExcVal;
     Env = NextExceptionContext->Env;
     longjmp(NextExceptionContext->JmpBuf, 1);
