@@ -399,7 +399,7 @@ void GenBlock::makeGetField(size_t n) {
 
 void GenBlock::debug(Value* DbgVal) {
     if (DbgVal->getType() != getValType()) {
-        DbgVal = Builder->CreateBitCast(DbgVal, getValType());
+        DbgVal = Builder->CreateIntCast(DbgVal, getValType(), true);
     }
     Builder->CreateCall(getFunction("debug"), DbgVal);
 }
@@ -533,6 +533,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             TmpVal = stackPop();
             TmpVal = Builder->CreateSRem(intVal(Accu), intVal(TmpVal));
             Accu = valInt(TmpVal);
+            Accu->setName("ModInt");
             break;
         case OFFSETINT:
             Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
@@ -661,7 +662,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case BRANCHIF: {
             auto BoolVal = Accu;
             if (Accu->getType() == getValType()) {
-                BoolVal = Builder->CreateICmpEQ(Accu, ConstInt(Val_false));
+                // Set boolval to true if Accu != Val_False
+                BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false), "BranchCmp");
             }
             Builder->CreateCondBr(BoolVal, BrBlock->LlvmBlocks.front(), NoBrBlock->LlvmBlocks.front());
             break;
@@ -669,9 +671,9 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case BRANCHIFNOT: {
             auto BoolVal = Accu;
             if (Accu->getType() == getValType()) {
-                BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false));
+                BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false), "BranchCmp");
             }
-            Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(),BrBlock->LlvmBlocks.front());
+            Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(), BrBlock->LlvmBlocks.front());
             break;
         }
 
