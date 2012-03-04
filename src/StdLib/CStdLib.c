@@ -28,6 +28,10 @@ value getEnv() {
     return Env;
 }
 
+size_t sizeofValue() {
+    return sizeof(value);
+}
+
 void debug(value Arg) {
     printf("DEBUG : %ld\n", (long) Arg);
 }

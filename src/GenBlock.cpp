@@ -644,12 +644,29 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 makeClosure(0, Inst->ClosureRecFns[0]);
                 push();
             } else {
+                makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
+                push();
                 // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
 
         case CLOSURE:
             makeClosure(Inst->Args[0], Inst->Args[1]);
+            break;
+
+        case PUSHOFFSETCLOSURE:
+            push();
+        case OFFSETCLOSURE:
+            Accu = Builder->CreateCall(getFunction("getEnv")) +
+                   Inst->Args[0] *
+                   (int64_t)Builder->CreateCall(getFunction("sizeofValue"));
+            break;
+            
+        case PUSHOFFSETCLOSUREM2:
+            push();
+        case OFFSETCLOSUREM2:
+            Accu = Builder->CreateCall(getFunction("getEnv")) -
+                   2 * (int64_t)Builder->CreateCall(getFunction("sizeofValue"));
             break;
 
         case PUSHOFFSETCLOSURE0:
@@ -660,6 +677,13 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             this->Function->ClosuresFunctions[Accu] = CI;
             break;
         }
+
+        case PUSHOFFSETCLOSURE2:
+            push();
+        case OFFSETCLOSURE2:
+            Accu = Builder->CreateCall(getFunction("getEnv")) +
+                   2 * (int64_t)Builder->CreateCall(getFunction("sizeofValue"));
+            break;
 
         case C_CALL1: makePrimCall(1, Inst->Args[0]); break;
         case C_CALL2: makePrimCall(2, Inst->Args[0]); break;
