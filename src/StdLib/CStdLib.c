@@ -62,11 +62,14 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     return Closure;
 }
 
-// Does not work: Args and NbRemArgs are not taken into account
-void closureSetNestedClos(value Closure, value ClosIdx, value FPtr, value NbArgs) {
-    int i = (ClosIdx*2) - 1;
-    Field(Closure, i) = Make_header(i * 2, Infix_tag, Caml_white);  /* color irrelevant. */
-    Field(Closure, i + 1) = (code_t)FPtr;
+void closureSetNestedClos(value Closure, value ClosIdx, value FieldIdx,
+                          value FPtr,    value NbArgs) {
+
+    //                                   This is weird (taken from interp.c)
+    //                                    vvvvvvvvvvvv
+    Field(Closure, ClosIdx) = Make_header(FieldIdx * 2, Infix_tag, Caml_white);
+    Field(Closure, ClosIdx + 1) = (code_t)FPtr;
+    Field(Closure, ClosIdx + 2 + NbArgs) = NbArgs;
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {
