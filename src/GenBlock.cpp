@@ -347,6 +347,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     auto ClosSetNest = getFunction("closureSetNestedClos");
     vector<GenFunction*> DestGenFuncs;
     vector<llvm::Value*> CastPtrs;
+    int32_t AllNbArgs;
 
     Builder->SetInsertPoint(LlvmBlock);
 
@@ -360,21 +361,39 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
         auto ClosureFunc = DestGenFunc->ApplierFunction;
         CastPtrs.push_back(Builder->CreatePtrToInt(ClosureFunc, getValType()));
+        AllNbArgs += DestGenFunc->LlvmFunc->arg_size();
     }
 
     int FuncNbArgs = DestGenFuncs[0]->LlvmFunc->arg_size();
 
+    // 1 nested closure takes up:
+    // 1 header + 1 code pointer + NbArgs fields + 2
+    // i.e. 4 + NbArgs
+    int32_t NestClosNbFields = NbFuncs*4 + AllNbArgs;
+
     auto Closure = Builder->CreateCall3(MakeClos, 
-            ConstInt(NbFuncs*2 + NbFields), // Nested closures are 1 header + 1 code pointer
+            ConstInt(NestClosNbFields + NbFields),
             CastPtrs[0], 
             ConstInt(FuncNbArgs));
 
     // If there are fields, push the Accu on the stack
     if (NbFields > 0) push();
 
-    // Set Closure nested closures
-    for (int i = 1; i < NbFuncs; i++)
-        Builder->CreateCall3(ClosSetNest, Accu, ConstInt(i), CastPtrs[i]);
+    // Set Closure's nested closures
+    int32_t NestClosIdx = 1;
+    int64_t ArgSize;
+    for (int i = 1; i < NbFuncs; i++) {
+        ArgSize = DestGenFuncs[i]->LlvmFunc->arg_size();
+
+        Builder->CreateCall5(ClosSetNest,
+                             Closure,
+                             ConstInt(NestClosIdx),
+                             ConstInt(i),
+                             CastPtrs[i],
+                             ConstInt(ArgSize));
+
+        NestClosIdx += 4+ArgSize;
+    }
 
     // Set Closure fields
     for (int i = 0; i < NbFields; i++) {
