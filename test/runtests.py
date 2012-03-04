@@ -22,9 +22,13 @@ def test_fail(test_name, message):
 def compile_and_run(file_path):
     test_print("Running test {0}".format(file_path))
 
+    clean = False
+    if file_path.find("clean") != -1:
+        clean = True
+
     try:
         compile_output = subprocess.check_output(["ocamlc", file_path + ".ml"], stderr=subprocess.STDOUT)
-        if file_path.find("clean") != -1:
+        if clean:
             subprocess.check_output(["ocamlclean", "a.out"])
     except subprocess.CalledProcessError, e:
         test_fail(file_path, "Compilation error")
@@ -50,12 +54,17 @@ def compile_and_run(file_path):
         f.write(e.output)
         raise e
 
-    res = out.split("\n")[-2].strip()
+    if clean:
+        res = out.strip()
+    else:
+        res = out.split("\n")[-2].strip()
 
     try:
         outres = open(file_path + ".out").read().strip()
         if res != outres:
             test_fail(file_path, "Non expected test value")
+            print outres
+            print res
             test_print("Expected value: {1}".format(outres))
             test_print("Test out value: {1}".format(res))
             print out
