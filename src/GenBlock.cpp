@@ -49,6 +49,7 @@ GenBlock::GenBlock(int Id, GenFunction* Function) {
     this->Builder = Function->Module->Builder;
     this->Accu = nullptr;
     this->StackOffset = 0;
+    this->NextInstIdx = 0;
 
     addBlock();
 }
@@ -415,6 +416,13 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         if (Accu) Accu->dump();
     )
 
+    if (Inst->idx < NextInstIdx) {
+        DEBUG(
+            cout << "Dead code ! "; Inst->Print();
+        )
+        return;
+    }
+
     switch (Inst->OpNum) {
 
         case CONST0: this->Accu = ConstInt(Val_int(0)); break;
@@ -657,6 +665,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case BRANCH:{
             BasicBlock* LBrBlock = BrBlock->LlvmBlock;
             Builder->CreateBr(LBrBlock);
+            this->NextInstIdx = Inst->Args[0];
             break;
         }
         case BRANCHIF: {
