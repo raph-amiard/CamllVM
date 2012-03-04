@@ -24,6 +24,8 @@ def compile_and_run(file_path):
 
     try:
         compile_output = subprocess.check_output(["ocamlc", file_path + ".ml"], stderr=subprocess.STDOUT)
+        if file_path.find("clean") != -1:
+            subprocess.check_output(["ocamlclean", "a.out"])
     except subprocess.CalledProcessError, e:
         test_fail(file_path, "Compilation error")
         test_print("Compilation output : ")
