@@ -342,14 +342,15 @@ void GenBlock::makeClosure(int32_t NbFields, int32_t FnId) {
 }
 
 void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds) {
+
     auto MakeClos = getFunction("makeClosure");
     auto ClosSetVar = getFunction("closureSetVar");
     auto ClosSetNest = getFunction("closureSetNestedClos");
+
     vector<GenFunction*> DestGenFuncs;
     vector<llvm::Value*> CastPtrs;
     int32_t AllNbArgs;
 
-    Builder->SetInsertPoint(LlvmBlock);
 
     // Create pointer to all dest functions
     for (int i = 0; i < NbFuncs; i++) {
@@ -357,6 +358,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
         if (DestGenFunc->LlvmFunc == NULL) {
             DestGenFunc->CodeGen();
         }
+        Builder->SetInsertPoint(LlvmBlock);
         DestGenFuncs.push_back(DestGenFunc);
 
         auto ClosureFunc = DestGenFunc->ApplierFunction;
@@ -372,9 +374,9 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     int32_t NestClosNbFields = NbFuncs*4 + AllNbArgs;
 
     auto Closure = Builder->CreateCall3(MakeClos, 
-            ConstInt(NestClosNbFields + NbFields),
-            CastPtrs[0], 
-            ConstInt(FuncNbArgs));
+                                        ConstInt(NestClosNbFields + NbFields),
+                                        CastPtrs[0], 
+                                        ConstInt(FuncNbArgs));
 
     // If there are fields, push the Accu on the stack
     if (NbFields > 0) push();
