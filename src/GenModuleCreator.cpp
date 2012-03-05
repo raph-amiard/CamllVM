@@ -4,6 +4,28 @@
 using namespace std;
 using namespace llvm;
 
+deque<ZInstruction*>* removeDeadInstructions(deque<ZInstruction*>* Instructions) {
+    auto NewInsts = new deque<ZInstruction*>();
+    size_t MaxBranch = 0;
+    size_t SmallestCondBranch = 0;
+    while (Instructions->size()) {
+        auto Inst = Instructions->front();
+        Instructions->pop_front();
+        if (Inst->idx >= MaxBranch || (Inst->idx >= SmallestCondBranch && SmallestCondBranch > 0)) {
+            NewInsts->push_back(Inst);
+            if (Inst->isCondJump() && 
+                    (SmallestCondBranch > Inst->getDestIdx() || 
+                     SmallestCondBranch == 0)) {
+                SmallestCondBranch = Inst->getDestIdx();
+            }
+            if (Inst->OpNum == BRANCH) {
+                MaxBranch = Inst->Args[0];
+            }
+        }
+    }
+    return NewInsts;
+}
+
 // ================ GenModuleCreator Implementation ================== //
 
 GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
@@ -39,7 +61,7 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
     // Create the main function, based on the remaining instructions
     Module->MainFunction = new GenFunction(MAIN_FUNCTION_ID, Module);
     Module->MainFunction->Arity = 0;
-    generateFunction(Module->MainFunction, &MainBlockInsts);
+    generateFunction(Module->MainFunction, removeDeadInstructions(&MainBlockInsts));
 
     return Module;
 }

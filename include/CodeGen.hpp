@@ -51,7 +51,6 @@ private:
     int Id;
     GenFunction* Function;
     llvm::IRBuilder<> * Builder;
-    int NextInstIdx;
 
     // Siblings blocks handling
     std::list<GenBlock*> PreviousBlocks;
