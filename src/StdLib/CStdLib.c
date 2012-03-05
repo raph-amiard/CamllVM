@@ -28,9 +28,15 @@ value getEnv() {
     return Env;
 }
 
+value isClosureHeader(value Header) {
+    return Tag_hd(Header) == Closure_tag;
+}
+
+/*
 size_t sizeofValue() {
     return sizeof(value);
 }
+*/
 
 void debug(value Arg) {
     printf("DEBUG : %ld\n", (long) Arg);
@@ -68,12 +74,9 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
 
 void closureSetNestedClos(value Closure, value ClosIdx, value FieldIdx,
                           value FPtr,    value NbArgs) {
-
-    //                                   This is weird (taken from interp.c)
-    //                                    vvvvvvvvvvvv
-    Field(Closure, ClosIdx) = Make_header(FieldIdx * 2, Infix_tag, Caml_white);
+    Field(Closure, ClosIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
     Field(Closure, ClosIdx + 1) = (code_t)FPtr;
-    Field(Closure, ClosIdx + 2 + NbArgs) = NbArgs;
+    Field(Closure, ClosIdx + 3 + NbArgs) = NbArgs;
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {
