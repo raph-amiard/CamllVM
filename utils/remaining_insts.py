@@ -1,9 +1,6 @@
 import re
 import os
 
-print "============================================================================="
-print "#               Instructions that still have to be implemented              #"
-print "============================================================================="
 
 PATH = "/".join(os.path.realpath(__file__).split("/")[:-1]) + "/"
 
@@ -16,5 +13,12 @@ all_instrs = set(
                open(PATH + "../include/Instructions.hpp").read())
 )
 
-for inst in sorted(all_instrs - impl_instrs):
+print "============================================================================="
+print "#               Instructions that still have to be implemented              #"
+print "============================================================================="
+
+insts = sorted(all_instrs - impl_instrs - set(["GRAB", "RESTART"]))
+for inst in insts:
     print inst
+
+print "{0} instructions remaining".format(len(insts))
