@@ -48,7 +48,7 @@ Function* GenFunction::CodeGen() {
 
     // Put the function arguments on the stack of the first block
     for (auto AI = LlvmFunc->arg_begin(); AI != LlvmFunc->arg_end(); ++AI)
-        FirstBlock->Stack.push_front(new StackValue {AI});
+        FirstBlock->Stack.push_front(new StackValue(AI));
 
     // Generate each block and put it in the function's list of blocks
     for (auto BlockP : Blocks) {

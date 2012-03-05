@@ -104,7 +104,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
                 PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "phi");
                 PHINodes.push_back(make_pair(PHI, PrevStackPos));
                 Builder->SetInsertPoint(B);
-                Ret = new StackValue {PHI};
+                Ret = new StackValue(PHI);
             }
             PrevStackCache[PrevStackPos] = Ret;
         }
@@ -612,7 +612,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case ASSIGN:
-            MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue {Accu};
+            MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue(Accu);
             break;
 
         case PUSHGETGLOBAL: push();

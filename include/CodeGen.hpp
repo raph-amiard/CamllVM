@@ -40,6 +40,7 @@ struct ClosureInfo {
 
 struct StackValue {
     llvm::Value* Val;
+    StackValue(llvm::Value* Val) {this->Val = Val;}
 };
 
 class GenBlock : public CodeGen {
