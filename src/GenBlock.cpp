@@ -566,6 +566,11 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
             break;
 
+
+        case GEINT:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpSGE(Accu, TmpVal);
+            break;
         case GTINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSGT(Accu, TmpVal);
@@ -644,8 +649,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 makeClosure(0, Inst->ClosureRecFns[0]);
                 push();
             } else {
+                /* Deactivated for the moment because it doesn't work
                 makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
                 push();
+                */
                 // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
