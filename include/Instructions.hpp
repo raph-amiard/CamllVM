@@ -202,7 +202,7 @@ static OpCode AllOpCodes[146] = {
 };
 
 enum InstrAnnotation {
-    NOTHING, FUNCTION_START, FUNCTION_RETURN, BLOCK_START
+    NOTHING, FUNCTION_START, BLOCK_START
 };
 
 
@@ -338,7 +338,7 @@ inline void printInstructions(std::vector<ZInstruction*>& Instructions, bool Lin
 
         Instructions[i]->Print(LineNums);
 
-        if (Instructions[i]->Annotation == FUNCTION_RETURN) 
+        if (Instructions[i]->isReturn()) 
             std::cout << std::endl;
     }
 }

@@ -66,19 +66,21 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
 
 void annotateNodes(vector<ZInstruction*>& Instructions) {
 
-    for (auto Inst: Instructions)
+    for (auto Inst: Instructions) {
         if (Inst->isClosure()) {
             Instructions[Inst->getDestIdx()]->Annotation = FUNCTION_START;
-        } else if (Inst->isClosureRec()) {
+        } 
+        if (Inst->isClosureRec()) {
             for (int j = 0; j < Inst->Args[0]; j++)
                 Instructions[Inst->ClosureRecFns[j]]->Annotation = FUNCTION_START;
-        } else if (Inst->isReturn()) {
-            Inst->Annotation = FUNCTION_RETURN;
-        } else if (Inst->OpNum == PUSHTRAP) {
+        } 
+        if (Inst->OpNum == PUSHTRAP) {
             Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;
-        } else if (Inst->isJumpInst()) {
+        } 
+        if (Inst->isJumpInst()) {
             Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;
             Instructions[Inst->idx + 1]->Annotation = BLOCK_START;
         }
+    }
 
 }
