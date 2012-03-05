@@ -567,35 +567,41 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHENVACC:  push(); envAcc(Inst->Args[0]); break;
 
         case ADDINT:
-                          TmpVal = castToInt(stackPop());
-                          Accu = Builder->CreateAdd(castToInt(Accu), Builder->CreateSub(TmpVal, ConstInt(1)));
-                          break;
+            TmpVal = castToInt(stackPop());
+            Accu = Builder->CreateAdd(castToInt(Accu), Builder->CreateSub(TmpVal, ConstInt(1)));
+            Accu->setName("AddInt");
+            break;
         case NEGINT:
-                          Accu = Builder->CreateSub(ConstInt(2), Accu);
-                          break;
+            Accu = Builder->CreateSub(ConstInt(2), Accu);
+            Accu->setName("NegInt");
+            break;
         case SUBINT:
-                          TmpVal = stackPop();
-                          Accu = Builder->CreateSub(Accu, Builder->CreateAdd(TmpVal, ConstInt(1)));
-                          break;
+            TmpVal = stackPop();
+            Accu = Builder->CreateAdd(Builder->CreateSub(Accu, TmpVal), ConstInt(1));
+            Accu->setName("SubInt");
+            break;
         case MULINT:
-                          TmpVal = stackPop();
-                          TmpVal = Builder->CreateMul(intVal(Accu), intVal(TmpVal));
-                          Accu = valInt(TmpVal);
-                          break;
+            TmpVal = stackPop();
+            TmpVal = Builder->CreateMul(intVal(Accu), intVal(TmpVal));
+            Accu = valInt(TmpVal);
+            Accu->setName("Mulint");
+            break;
         case DIVINT:
-                          TmpVal = stackPop();
-                          TmpVal = Builder->CreateSDiv(intVal(Accu), intVal(TmpVal));
-                          Accu = valInt(TmpVal);
-                          break;
+            TmpVal = stackPop();
+            TmpVal = Builder->CreateSDiv(intVal(Accu), intVal(TmpVal));
+            Accu = valInt(TmpVal);
+            Accu->setName("Divint");
+            break;
         case MODINT:
-                          TmpVal = stackPop();
-                          TmpVal = Builder->CreateSRem(intVal(Accu), intVal(TmpVal));
-                          Accu = valInt(TmpVal);
-                          Accu->setName("ModInt");
-                          break;
+            TmpVal = stackPop();
+            TmpVal = Builder->CreateSRem(intVal(Accu), intVal(TmpVal));
+            Accu = valInt(TmpVal);
+            Accu->setName("ModInt");
+            break;
         case OFFSETINT:
-                          Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
-                          break;
+            Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
+            Accu->setName("Offsetint");
+            break;
 
 
         case GEINT:
