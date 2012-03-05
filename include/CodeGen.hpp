@@ -76,6 +76,7 @@ private:
     std::deque<StackValue*> Stack;
     std::map<int, StackValue*> PrevStackCache;
     llvm::Value* Accu;
+    llvm::Value* getAccu(bool CreatePhi=true);
 
     // Llvm block handling
     std::pair<llvm::BasicBlock*, llvm::BasicBlock*> addBlock();
