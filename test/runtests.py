@@ -7,6 +7,7 @@ except ImportError:
     def colored(txt, col):
         return txt
 
+PATH = "/".join(os.path.realpath(__file__).split("/")[:-1]) + "/"
 Z3_PATH = "../../bin/Z3"
 
 test_num = 1
@@ -75,7 +76,7 @@ def compile_and_run(file_path):
     test_print(colored("Test {0} succeeded !".format(file_path), "green"))
 
 
-os.chdir("test/testfiles")
+os.chdir(PATH + "testfiles")
 
 def cmp_filenames(a, b):
     na = int(a.split("_")[0])
