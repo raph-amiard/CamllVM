@@ -172,7 +172,7 @@ void GenBlock::push(bool CreatePhi) {
         PHINodes.push_back(make_pair(PHI, -1));
         Accu = PHI;
     }
-    this->Stack.push_front(new StackValue {Accu}); 
+    this->Stack.push_front(new StackValue(Accu));
 }
 void GenBlock::acc(int n) { 
     this->Accu = this->getStackAt(n); 
