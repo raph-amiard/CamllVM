@@ -602,6 +602,40 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
             Accu->setName("Offsetint");
             break;
+        case ANDINT: // Untested
+            Accu  = Builder->CreateAnd(Accu, stackPop());
+        case ORINT: // Untested
+            Accu  = Builder->CreateOr(Accu, stackPop());
+        case XORINT: // Untested
+            Accu  = Builder->CreateOr(Builder->CreateXor(Accu, stackPop()), 1);
+        case LSLINT: // Untested
+            Accu = Builder->CreateAdd(
+                Builder->CreateShl(Builder->CreateSub(Accu, ConstInt(1)), 
+                                    intVal(stackPop())),
+                ConstInt(1)
+            );
+        case LSRINT: // Untested
+            Accu = Builder->CreateOr(
+                Builder->CreateLShr(Builder->CreateSub(Accu, ConstInt(1)), intVal(stackPop())),
+                ConstInt(1)
+            );
+
+
+            /*
+    Instruct(ANDINT):
+      accu = (value)((intnat) accu & (intnat) *sp++); Next;
+    Instruct(ORINT):
+      accu = (value)((intnat) accu | (intnat) *sp++); Next;
+    Instruct(XORINT):
+      accu = (value)(((intnat) accu ^ (intnat) *sp++) | 1); Next;
+    Instruct(LSLINT):
+      accu = (value)((((intnat) accu - 1) << Long_val(*sp++)) + 1); Next;
+    Instruct(LSRINT):
+      accu = (value)((((uintnat) accu - 1) >> Long_val(*sp++)) | 1);
+      Next;
+    Instruct(ASRINT):
+      accu = (value)((((intnat) accu - 1) >> Long_val(*sp++)) | 1); Next;
+      */
 
 
         case GEINT:
