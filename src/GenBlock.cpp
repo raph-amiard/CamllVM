@@ -408,6 +408,35 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     this->Function->ClosuresFunctions[Accu] = CI;
 }
 
+void GenBlock::offsetClosure(int32_t n) {
+    // In the ZAM, 'infix' closures take up exactly 2 fields so n should be even
+    if (n%2 != 0) return;
+
+    int32_t Shift = n/2;
+    int64_t * Env = (int64_t*) Builder->CreateCall(getFunction("getEnv"));
+    while (Shift) {
+        if (Shift < 0) {
+            // /!\ The common case (i.e. we're in the second closure) is not checked
+            // We find the size of the previous closure from its NbArgs field
+            Env -= (*(Env-2) + 4);
+            Shift--;
+        } else {
+            int64_t Header = *(Env-1);
+            // Check if we are in the first closure because its header wosize
+            // includes all others, so we check the tag instead
+            if (Builder->CreateCall(getFunction("isClosureHeader"), ConstInt(Header))) {
+                Env += 2;
+            } else {
+                // if in an 'infix' closure we find the size of the current
+                // closure from the header wosize
+                int64_t WoSize = (*(Env-1))>>10;
+                Env += (WoSize + 2);
+            }
+            Shift++;
+        }
+    }
+    Accu = (llvm::Value*)Env;
+}
 
 void GenBlock::makeSetField(size_t n) {
     Builder->CreateCall3(getFunction("setField"), Accu, ConstInt(n), stackPop());
@@ -429,18 +458,18 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
     Value *TmpVal;
 
     DEBUG(
-        cout << "Generating Instruction "; Inst->Print(true);
-        printTab(2);
-        printf("Accu pointer before: {%p}\n", Accu);
-        if (Accu) Accu->dump();
-    )
+            cout << "Generating Instruction "; Inst->Print(true);
+            printTab(2);
+            printf("Accu pointer before: {%p}\n", Accu);
+            if (Accu) Accu->dump();
+         )
 
-    if (Inst->idx < NextInstIdx) {
-        DEBUG(
-            cout << "Dead code ! "; Inst->Print();
-        )
-        return;
-    }
+        if (Inst->idx < NextInstIdx) {
+            DEBUG(
+                    cout << "Dead code ! "; Inst->Print();
+                 )
+                return;
+        }
 
     switch (Inst->OpNum) {
 
@@ -449,57 +478,57 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case CONST2: this->Accu = ConstInt(Val_int(2)); break;
         case CONST3: this->Accu = ConstInt(Val_int(3)); break;
         case CONSTINT:
-            this->Accu = ConstInt(Val_int(Inst->Args[0]));
-            break;
+                     this->Accu = ConstInt(Val_int(Inst->Args[0]));
+                     break;
 
         case PUSHCONST0: push(); this->Accu = ConstInt(Val_int(0)); break;
         case PUSHCONST1: push(); this->Accu = ConstInt(Val_int(1)); break;
         case PUSHCONST2: push(); this->Accu = ConstInt(Val_int(2)); break;
         case PUSHCONST3: push(); this->Accu = ConstInt(Val_int(3)); break;
         case PUSHCONSTINT: 
-            push(); 
-            this->Accu = ConstInt(Val_int(Inst->Args[0])); 
-            break;
+                         push(); 
+                         this->Accu = ConstInt(Val_int(Inst->Args[0])); 
+                         break;
 
         case POP: 
-            for (int i = 0; i < Inst->Args[0]; i++) stackPop(); 
-            break;
+                         for (int i = 0; i < Inst->Args[0]; i++) stackPop(); 
+                         break;
         case PUSH: push(); break;
         case PUSH_RETADDR:
-            push(); push(); push();
-            break;
+                   push(); push(); push();
+                   break;
 
         case PUSHTRAP: {
-            auto Buf = Builder->CreateCall(getFunction("getNewBuffer"));
-            auto SetJmpFunc = getFunction("_setjmp");
-            auto JmpBufType = Function->Module->TheModule->getTypeByName("struct.__jmp_buf_tag")->getPointerTo();
-            auto JmpBuf = Builder->CreateBitCast(Buf, JmpBufType);
-            auto SetJmpRes = Builder->CreateCall(SetJmpFunc, JmpBuf);
-            auto BoolVal = Builder->CreateIntCast(SetJmpRes, Type::getInt1Ty(getGlobalContext()), getValType());
-            auto Blocks = addBlock();
-            auto TrapBlock = Function->Blocks[Inst->Args[0]];
-            Builder->CreateCondBr(BoolVal, TrapBlock->LlvmBlocks.front(), Blocks.second);
+                           auto Buf = Builder->CreateCall(getFunction("getNewBuffer"));
+                           auto SetJmpFunc = getFunction("_setjmp");
+                           auto JmpBufType = Function->Module->TheModule->getTypeByName("struct.__jmp_buf_tag")->getPointerTo();
+                           auto JmpBuf = Builder->CreateBitCast(Buf, JmpBufType);
+                           auto SetJmpRes = Builder->CreateCall(SetJmpFunc, JmpBuf);
+                           auto BoolVal = Builder->CreateIntCast(SetJmpRes, Type::getInt1Ty(getGlobalContext()), getValType());
+                           auto Blocks = addBlock();
+                           auto TrapBlock = Function->Blocks[Inst->Args[0]];
+                           Builder->CreateCondBr(BoolVal, TrapBlock->LlvmBlocks.front(), Blocks.second);
 
-            Builder->SetInsertPoint(TrapBlock->LlvmBlock);
-            TrapBlock->Accu = Builder->CreateCall(getFunction("getExceptionValue"));
-            Builder->CreateCall(getFunction("removeExceptionContext"));
+                           Builder->SetInsertPoint(TrapBlock->LlvmBlock);
+                           TrapBlock->Accu = Builder->CreateCall(getFunction("getExceptionValue"));
+                           Builder->CreateCall(getFunction("removeExceptionContext"));
 
-            Builder->SetInsertPoint(Blocks.second);
-            for (int i=0;i<4;i++) push(false);
-            break;
+                           Builder->SetInsertPoint(Blocks.second);
+                           for (int i=0;i<4;i++) push(false);
+                           break;
 
-        }
+                       }
         case POPTRAP: {
-            //UnwindBlocks.pop_front();
-            Builder->CreateCall(getFunction("removeExceptionContext"));
-            stackPop();stackPop();stackPop();stackPop();
-            break;
-        }
+                          //UnwindBlocks.pop_front();
+                          Builder->CreateCall(getFunction("removeExceptionContext"));
+                          stackPop();stackPop();stackPop();stackPop();
+                          break;
+                      }
         case RAISE: {
-            Builder->CreateCall(getFunction("throwException"), Accu);
-            Builder->CreateRet(Accu);
-            break;
-        }
+                        Builder->CreateCall(getFunction("throwException"), Accu);
+                        Builder->CreateRet(Accu);
+                        break;
+                    }
 
 
         case ACC0: acc(0); break;
@@ -536,95 +565,95 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHENVACC:  push(); envAcc(Inst->Args[0]); break;
 
         case ADDINT:
-            TmpVal = castToInt(stackPop());
-            Accu = Builder->CreateAdd(castToInt(Accu), Builder->CreateSub(TmpVal, ConstInt(1)));
-            break;
+                          TmpVal = castToInt(stackPop());
+                          Accu = Builder->CreateAdd(castToInt(Accu), Builder->CreateSub(TmpVal, ConstInt(1)));
+                          break;
         case NEGINT:
-            Accu = Builder->CreateSub(ConstInt(2), Accu);
-            break;
+                          Accu = Builder->CreateSub(ConstInt(2), Accu);
+                          break;
         case SUBINT:
-            TmpVal = stackPop();
-            Accu = Builder->CreateSub(Accu, Builder->CreateAdd(TmpVal, ConstInt(1)));
-            break;
+                          TmpVal = stackPop();
+                          Accu = Builder->CreateSub(Accu, Builder->CreateAdd(TmpVal, ConstInt(1)));
+                          break;
         case MULINT:
-            TmpVal = stackPop();
-            TmpVal = Builder->CreateMul(intVal(Accu), intVal(TmpVal));
-            Accu = valInt(TmpVal);
-            break;
+                          TmpVal = stackPop();
+                          TmpVal = Builder->CreateMul(intVal(Accu), intVal(TmpVal));
+                          Accu = valInt(TmpVal);
+                          break;
         case DIVINT:
-            TmpVal = stackPop();
-            TmpVal = Builder->CreateSDiv(intVal(Accu), intVal(TmpVal));
-            Accu = valInt(TmpVal);
-            break;
+                          TmpVal = stackPop();
+                          TmpVal = Builder->CreateSDiv(intVal(Accu), intVal(TmpVal));
+                          Accu = valInt(TmpVal);
+                          break;
         case MODINT:
-            TmpVal = stackPop();
-            TmpVal = Builder->CreateSRem(intVal(Accu), intVal(TmpVal));
-            Accu = valInt(TmpVal);
-            Accu->setName("ModInt");
-            break;
+                          TmpVal = stackPop();
+                          TmpVal = Builder->CreateSRem(intVal(Accu), intVal(TmpVal));
+                          Accu = valInt(TmpVal);
+                          Accu->setName("ModInt");
+                          break;
         case OFFSETINT:
-            Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
-            break;
+                          Accu = Builder->CreateAdd(Accu, ConstInt(Inst->Args[0] << 1));
+                          break;
 
         case GTINT:
-            TmpVal = stackPop();
-            Accu = Builder->CreateICmpSGT(Accu, TmpVal);
-            break;
+                          TmpVal = stackPop();
+                          Accu = Builder->CreateICmpSGT(Accu, TmpVal);
+                          break;
         case NEQ:
-            Accu = Builder->CreateICmpNE(Accu, stackPop());
-            break;
+                          Accu = Builder->CreateICmpNE(Accu, stackPop());
+                          break;
         case EQ:
-            Accu = Builder->CreateICmpEQ(Accu, stackPop());
-            break;
+                          Accu = Builder->CreateICmpEQ(Accu, stackPop());
+                          break;
 
         case ASSIGN:
-            MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue {Accu};
-            break;
+                          MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue {Accu};
+                          break;
 
         case PUSHGETGLOBAL:
-            push();
+                          push();
         case GETGLOBAL:
-            Accu = Builder->CreateCall(getFunction("getGlobal"), ConstInt(Inst->Args[0]), "Global");
-            break;
+                          Accu = Builder->CreateCall(getFunction("getGlobal"), ConstInt(Inst->Args[0]), "Global");
+                          break;
 
         case SETGLOBAL:
-            Builder->CreateCall2(getFunction("setGlobal"), ConstInt(Inst->Args[0]), Accu);
-            break;
+                          Builder->CreateCall2(getFunction("setGlobal"), ConstInt(Inst->Args[0]), Accu);
+                          break;
 
         case PUSHATOM0:
-            push();
+                          push();
         case ATOM0:
-            Accu = Builder->CreateCall(getFunction("getAtom"), ConstInt(0));
-            break;
+                          Accu = Builder->CreateCall(getFunction("getAtom"), ConstInt(0));
+                          break;
 
         case PUSHATOM:
-            push();
+                          push();
         case ATOM:
-            Accu = Builder->CreateCall(getFunction("getAtom"),
-                                       ConstInt(Inst->Args[0]));
-            break;
+                          Accu = Builder->CreateCall(getFunction("getAtom"),
+                                  ConstInt(Inst->Args[0]));
+                          break;
 
 
         case MAKEBLOCK1:
-            Accu = Builder->CreateCall2(getFunction("makeBlock1"), 
-                                        ConstInt(Inst->Args[0]), 
-                                        Accu, "Block");
-            break;
+                          Accu = Builder->CreateCall2(getFunction("makeBlock1"), 
+                                  ConstInt(Inst->Args[0]), 
+                                  Accu, "Block");
+                          break;
         case MAKEBLOCK2:
-            Accu = Builder->CreateCall3(getFunction("makeBlock2"), 
-                                        ConstInt(Inst->Args[0]), 
-                                        Accu, 
-                                        getStackAt(0), "Block");
-            stackPop();
-            break;
+                          Accu = Builder->CreateCall3(getFunction("makeBlock2"), 
+                                  ConstInt(Inst->Args[0]), 
+                                  Accu, 
+                                  getStackAt(0), "Block");
+                          stackPop();
+                          break;
         case MAKEBLOCK3:
-            Accu = Builder->CreateCall4(getFunction("makeBlock3"), 
-                                        ConstInt(Inst->Args[0]), 
-                                        Accu, 
-                                        getStackAt(0), 
-                                        getStackAt(1), "Block");
-            stackPop(); stackPop();
-            break;
+                          Accu = Builder->CreateCall4(getFunction("makeBlock3"), 
+                                  ConstInt(Inst->Args[0]), 
+                                  Accu, 
+                                  getStackAt(0), 
+                                  getStackAt(1), "Block");
+                          stackPop(); stackPop();
+                          break;
 
         case SETFIELD0: makeSetField(0); break;
         case SETFIELD1: makeSetField(1); break;
@@ -639,51 +668,44 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case GETFIELD:  makeGetField(Inst->Args[0]); break;
 
         case CLOSUREREC:
-            // Simple recursive function with no trampoline and no closure fields
-            if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
-                makeClosure(0, Inst->ClosureRecFns[0]);
-                push();
-            } else {
-                makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
-                push();
-                // TODO: Handle mutually recursive functions and rec fun with environnements
-            }
-            break;
+                        // Simple recursive function with no trampoline and no closure fields
+                        if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
+                            makeClosure(0, Inst->ClosureRecFns[0]);
+                            push();
+                        } else {
+                            makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
+                            push();
+                            // TODO: Handle mutually recursive functions and rec fun with environnements
+                        }
+                        break;
 
         case CLOSURE:
-            makeClosure(Inst->Args[0], Inst->Args[1]);
-            break;
+                        makeClosure(Inst->Args[0], Inst->Args[1]);
+                        break;
 
         case PUSHOFFSETCLOSURE:
-            push();
-        case OFFSETCLOSURE:
-            Accu = Builder->CreateCall(getFunction("getEnv")) +
-                   Inst->Args[0] *
-                   (int64_t)Builder->CreateCall(getFunction("sizeofValue"));
-            break;
-            
+                        push();
+        case OFFSETCLOSURE: offsetClosure(Inst->Args[0]);
+                            break;
+
         case PUSHOFFSETCLOSUREM2:
-            push();
-        case OFFSETCLOSUREM2:
-            Accu = Builder->CreateCall(getFunction("getEnv")) -
-                   2 * (int64_t)Builder->CreateCall(getFunction("sizeofValue"));
-            break;
+                            push();
+        case OFFSETCLOSUREM2: offsetClosure(-2);
+                              break;
 
         case PUSHOFFSETCLOSURE0:
-            push();
+                              push();
         case OFFSETCLOSURE0: {
-            Accu = Builder->CreateCall(getFunction("getEnv"));
-            ClosureInfo CI = {Function->LlvmFunc, true};
-            this->Function->ClosuresFunctions[Accu] = CI;
-            break;
-        }
+                                 Accu = Builder->CreateCall(getFunction("getEnv"));
+                                 ClosureInfo CI = {Function->LlvmFunc, true};
+                                 this->Function->ClosuresFunctions[Accu] = CI;
+                                 break;
+                             }
 
         case PUSHOFFSETCLOSURE2:
-            push();
-        case OFFSETCLOSURE2:
-            Accu = Builder->CreateCall(getFunction("getEnv")) +
-                   2 * (int64_t)Builder->CreateCall(getFunction("sizeofValue"));
-            break;
+                             push();
+        case OFFSETCLOSURE2: offsetClosure(2);
+                             break;
 
         case C_CALL1: makePrimCall(1, Inst->Args[0]); break;
         case C_CALL2: makePrimCall(2, Inst->Args[0]); break;
@@ -700,63 +722,63 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case APPTERM3: makeApply(3); Builder->CreateRet(Accu); break;
         case APPTERM: makeApply(Inst->Args[0]); Builder->CreateRet(Accu); break;
 
-        // Fall through return
+                      // Fall through return
         case STOP:
         case RETURN: 
-            Builder->CreateRet(Accu); 
-            break;
+                      Builder->CreateRet(Accu); 
+                      break;
         case BRANCH:{
-            BasicBlock* LBrBlock = BrBlock->LlvmBlock;
-            Builder->CreateBr(LBrBlock);
-            this->NextInstIdx = Inst->Args[0];
-            break;
-        }
+                        BasicBlock* LBrBlock = BrBlock->LlvmBlock;
+                        Builder->CreateBr(LBrBlock);
+                        this->NextInstIdx = Inst->Args[0];
+                        break;
+                    }
         case BRANCHIF: {
-            auto BoolVal = Accu;
-            if (Accu->getType() == getValType()) {
-                // Set boolval to true if Accu != Val_False
-                BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false), "BranchCmp");
-            }
-            Builder->CreateCondBr(BoolVal, BrBlock->LlvmBlocks.front(), NoBrBlock->LlvmBlocks.front());
-            break;
-        }
+                           auto BoolVal = Accu;
+                           if (Accu->getType() == getValType()) {
+                               // Set boolval to true if Accu != Val_False
+                               BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false), "BranchCmp");
+                           }
+                           Builder->CreateCondBr(BoolVal, BrBlock->LlvmBlocks.front(), NoBrBlock->LlvmBlocks.front());
+                           break;
+                       }
         case BRANCHIFNOT: {
-            auto BoolVal = Accu;
-            if (Accu->getType() == getValType()) {
-                BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false), "BranchCmp");
-            }
-            Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(), BrBlock->LlvmBlocks.front());
-            break;
-        }
+                              auto BoolVal = Accu;
+                              if (Accu->getType() == getValType()) {
+                                  BoolVal = Builder->CreateICmpNE(Accu, ConstInt(Val_false), "BranchCmp");
+                              }
+                              Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(), BrBlock->LlvmBlocks.front());
+                              break;
+                          }
 
 
         case BEQ:
-            TmpVal = Builder->CreateICmpEQ(ConstInt(Val_int(Inst->Args[0])), Accu);
-            goto makebr;
+                          TmpVal = Builder->CreateICmpEQ(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BNEQ:
-           TmpVal = Builder->CreateICmpNE(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpNE(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BLTINT:
-           TmpVal = Builder->CreateICmpSLT(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpSLT(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BLEINT:
-           TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BGTINT:
-           TmpVal = Builder->CreateICmpSGT(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpSGT(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BGEINT:
-           TmpVal = Builder->CreateICmpSGE(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpSGE(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BULTINT:
-           TmpVal = Builder->CreateICmpULT(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpULT(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
         case BUGEINT:
-           TmpVal = Builder->CreateICmpUGE(ConstInt(Val_int(Inst->Args[0])), Accu);
-           goto makebr;
+                          TmpVal = Builder->CreateICmpUGE(ConstInt(Val_int(Inst->Args[0])), Accu);
+                          goto makebr;
 
 
-        makebr: {
+makebr: {
             BasicBlock* LBrBlock = BrBlock->LlvmBlocks.front();
             BasicBlock* LNoBrBlock = NoBrBlock->LlvmBlocks.front();
             Builder->CreateCondBr(TmpVal, LBrBlock, LNoBrBlock);
@@ -764,13 +786,13 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         }
 
         case CHECK_SIGNALS:
-            // TODO: Understand and implement ocaml's event system
-            break;
+        // TODO: Understand and implement ocaml's event system
+        break;
 
         default:
-            printTab(2);
-            cout << "INSTRUCTION NOT HANDLED" << endl;
-            exit(42);
+        printTab(2);
+        cout << "INSTRUCTION NOT HANDLED" << endl;
+        exit(42);
 
     }
 
