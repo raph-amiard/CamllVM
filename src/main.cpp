@@ -7,6 +7,11 @@
 namespace po = boost::program_options;
 using namespace std;
 
+extern "C" {
+    void caml_sys_init(char * exe_name, char **argv);
+}
+
+
 po::options_description Options("Options");
 po::options_description Hidden("Hidden");
 po::options_description All("All");
@@ -18,6 +23,9 @@ void usage() {
 }
 
 int main(int argc, char** argv) {
+
+    caml_sys_init(argv[0], argv);
+
     int StepToReach = 4;
     int PrintFrom = 0;
     string ToErase = "0,0";
