@@ -682,6 +682,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Builder->CreateCall2(getFunction("setGlobal"), ConstInt(Inst->Args[0]), getAccu());
             break;
 
+        case PUSHGETGLOBALFIELD: push();
+        case GETGLOBALFIELD: // Untested
+            TmpVal = Builder->CreateCall(getFunction("getGlobal"), ConstInt(Inst->Args[0]), "Global");
+            Accu = Builder->CreateCall2(getFunction("getField"), getAccu(), ConstInt(Inst->Args[1]), "Field");
+            break;
+
         case PUSHATOM0: push();
         case ATOM0:
             Accu = Builder->CreateCall(getFunction("getAtom"), ConstInt(0), "Atom");
