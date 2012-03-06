@@ -47,8 +47,13 @@ Function* GenFunction::CodeGen() {
     LlvmFunc = Function::Create(FT, Function::ExternalLinkage, name(), Module->TheModule);
 
     // Put the function arguments on the stack of the first block
-    for (auto AI = LlvmFunc->arg_begin(); AI != LlvmFunc->arg_end(); ++AI)
+    size_t i = 0;
+    for (auto AI = LlvmFunc->arg_begin(); AI != LlvmFunc->arg_end(); ++AI) {
+        stringstream s; s << "arg" << i;
         FirstBlock->Stack.push_front(new StackValue(AI));
+        AI->setName(s.str());
+        i++;
+    }
 
     // Generate each block and put it in the function's list of blocks
     for (auto BlockP : Blocks) {
