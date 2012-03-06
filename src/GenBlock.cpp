@@ -458,6 +458,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             if (Accu) Accu->dump();
          )
 
+    int StackSize = Stack.size();
+
     switch (Inst->OpNum) {
 
         case CONST0: Accu = ConstInt(Val_int(0)); break;
@@ -869,6 +871,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     }
 
+    if (Inst->isClosureRec() && Inst->Args[1] > 0) exit(0);
+    DEBUG(cout << "Stack DIFF : " << StackSize - Stack.size() << endl;)
     DEBUG(cout << "Instruction generated ===  \n";)
 }
 
