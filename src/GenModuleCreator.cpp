@@ -6,8 +6,8 @@ using namespace llvm;
 
 deque<ZInstruction*>* removeDeadInstructions(deque<ZInstruction*>* Instructions) {
     auto NewInsts = new deque<ZInstruction*>();
-    size_t MaxBranch = 0;
-    size_t SmallestCondBranch = 0;
+    int32_t MaxBranch = 0;
+    int32_t SmallestCondBranch = 0;
     while (Instructions->size()) {
         auto Inst = Instructions->front();
         Instructions->pop_front();
