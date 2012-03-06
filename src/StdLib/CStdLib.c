@@ -20,6 +20,7 @@
 
 value Env = 0;
 void setEnv(value E) {
+    printf("setEnv %p\n", (void*)E);
     ////printf("IN SETENVVV\n\n");
     Env = E;
 }
@@ -61,54 +62,74 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     Code_val(Closure) = (code_t)FPtr;
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
-    //printf("CLOSURE ADDR: %p\n", (void*)Closure);
+    printf("CLOSURE ADDR: %p\n", (void*)Closure);
     //printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
     return Closure;
 }
 
 value shiftClosure(value Shift) {
+    printf("===================\nshiftClosure\n===============\n");
+    printf("Shift = %ld\n", Shift);
+    printf("Env = %p\n", (void*)Env);
     value* Envv = (value*)Env;
     while (Shift) {
         if (Shift < 0) {
             // We check the field right after the code pointer to see the
             // closure index. If this is the first, it's a special case
             // (we want to go back to the 'main' closure) 
-            if (*(Envv+1) == 1)
+            if (*(Envv+2) == 1)
                 Envv -= 2;
             else
                 // We find the size of the previous closure from its NbArgs field
-                Envv -= (*(Envv-2) + 4);
+                Envv -= (*(Envv-1) + 4);
 
-            Shift--;
+            Shift++;
         } else {
-            value Header = *(Envv-1);
+            printf("accessing header\n");
+            value Header = *(Envv);
+            printf("Header = %x\n", Header);
             // Check if we are in the first closure because its header wosize
             // includes all others, so we check the tag instead
             if (Tag_hd(Header) == Closure_tag) {
+                printf("main closure shift to first nested\n");
                 Envv += 2;
             } else {
+                printf("general case\n");
                 // if in an 'infix' closure we find the size of the current
                 // closure from the header wosize
-                value WoSize = (*(Envv-1))>>10;
-                Envv += (WoSize + 2);
+                value WoSize = (*(Envv))>>10;
+                Envv += (WoSize + 4);
             }
-            Shift++;
+            Shift--;
         }
     }
+    printf("-------------------\nEnv = %p\n", Envv);
     Env = (value) Envv;
+    printf("===================\nEND shiftClosure\n===============\n");
 }
 
-void closureSetNestedClos(value Closure, value ClosIdx, value FieldIdx,
+void closureSetNestedClos(value Closure, value CurrentIdx, value ClosureIdx,
                           value FPtr,    value NbArgs) {
-    Field(Closure, ClosIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
-    Field(Closure, ClosIdx + 1) = (code_t)FPtr;
-    Field(Closure, ClosIdx + 2) = FieldIdx;
-    Field(Closure, ClosIdx + 3 + NbArgs) = NbArgs;
+    printf("================================\nIN closureSetNestedClos\n=======================================\n");
+    printf("@Closure : %p\n", (void*)Closure);
+    printf("@NestedClosure : %p\n", (void*)&Field(Closure, CurrentIdx));
+    Field(Closure, CurrentIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
+    printf("Field(%ld) = %p\n", CurrentIdx+1, FPtr);
+    Field(Closure, CurrentIdx + 1) = (code_t)FPtr;
+    printf("Field(%ld) = %ld\n", CurrentIdx+2, ClosureIdx);
+    Field(Closure, CurrentIdx + 2) = ClosureIdx;
+    printf("Field(%ld) = %ld\n", CurrentIdx + 3 + NbArgs, NbArgs);
+    Field(Closure, CurrentIdx + 3 + NbArgs) = NbArgs;
+    printf("=============================\n OUT closureSetNestedClos\n=================================\n");
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {
     //printf("INTO CLOSURESETVAR\n\n");
     Field(Closure, VarIdx + 1) = Value;
+}
+
+value blockShift(value Block, value Shift) {
+    return Block + Shift*sizeof(value);
 }
 
 value apply(value Closure, value NbArgs, value* Args) {
@@ -191,7 +212,7 @@ value apply2(value Closure, value Arg1, value Arg2) {
 value getBlockSize(value Block) { return Wosize_val(Block); }
 
 value getField(value Block, value Idx) { 
-    //printf("Getfield : %p\n", (void*)Field(Block, Idx)); 
+    printf("Getfield : %p\n", (void*)Field(Block, Idx)); 
     return Field(Block, Idx); 
 }
 

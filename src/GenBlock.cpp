@@ -268,6 +268,8 @@ void GenBlock::makeApply(size_t n) {
 
         for (size_t i = 1; i <= n; i++)
             ArgsV.push_back(getStackAt(n-i));
+
+        Builder->CreateCall(getFunction("setEnv"), getAccu());
         makeCheckedCall(CI.LlvmFunc, ArgsV);
 
     } else {
@@ -359,7 +361,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
     vector<GenFunction*> DestGenFuncs;
     vector<llvm::Value*> CastPtrs;
-    int32_t AllNbArgs;
+    int32_t AllNbArgs = 0;
 
 
     // Create pointer to all dest functions
@@ -373,6 +375,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
         auto ClosureFunc = DestGenFunc->ApplierFunction;
         CastPtrs.push_back(Builder->CreatePtrToInt(ClosureFunc, getValType()));
+        cout << "CASTPTRS " << i << " = " << CastPtrs[i] << endl;
         AllNbArgs += DestGenFunc->LlvmFunc->arg_size();
     }
 
@@ -382,7 +385,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     // 1 header + 1 code pointer + NbArgs fields + 2 + 1 'field' directly
     // after the code pointer containing the closure index
     // i.e. 5 + NbArgs
-    int32_t NestClosNbFields = NbFuncs*5 + AllNbArgs;
+    int32_t NestClosNbFields = NbFuncs*4 + AllNbArgs;
 
     auto Closure = Builder->CreateCall3(MakeClos, 
                                         ConstInt(NestClosNbFields + NbFields),
@@ -392,20 +395,29 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     // If there are fields, push the Accu on the stack
     if (NbFields > 0) push();
 
+    // Push the closure on the stack
+    Accu = Closure;
+    push();
+
     // Set Closure's nested closures
-    int32_t NestClosIdx = 1;
+    // 0 = header, 1 = code pointer, 2 = first nested closure
+    int32_t GlobalIdx = 2;
     int64_t ArgSize;
     for (int i = 1; i < NbFuncs; i++) {
         ArgSize = DestGenFuncs[i]->LlvmFunc->arg_size();
 
         Builder->CreateCall5(ClosSetNest,
                              Closure,
-                             ConstInt(NestClosIdx),
+                             ConstInt(GlobalIdx),
                              ConstInt(i),
                              CastPtrs[i],
                              ConstInt(ArgSize));
 
-        NestClosIdx += 4+ArgSize;
+        // Push each closure on the stack
+        Accu = Builder->CreateCall2(getFunction("blockShift"), Closure, ConstInt(GlobalIdx));
+        push();
+
+        GlobalIdx += 4+ArgSize;
     }
 
     // Set Closure fields
