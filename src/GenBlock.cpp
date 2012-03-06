@@ -741,10 +741,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
-        case CLOSUREREC:
+        case CLOSUREREC: {
             // Simple recursive function with no trampoline and no closure fields
-            if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
-                makeClosure(0, Inst->ClosureRecFns[0]);
+            if (Inst->Args[0] == 1) {
+                makeClosure(Inst->Args[1], Inst->ClosureRecFns[0]);
                 push();
             } else {
                 makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
@@ -752,6 +752,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
+        }
 
         case CLOSURE:
             makeClosure(Inst->Args[0], Inst->Args[1]);
@@ -871,7 +872,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     }
 
-    if (Inst->isClosureRec() && Inst->Args[1] > 0) exit(0);
     DEBUG(cout << "Stack DIFF : " << StackSize - Stack.size() << endl;)
     DEBUG(cout << "Instruction generated ===  \n";)
 }
