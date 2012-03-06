@@ -366,3 +366,11 @@ value vectLength(value Vect) {
     return Val_long(Size);
 }
 
+value getVectItem(value Vect, value Idx) {
+    return Field(Vect, Long_val(Idx));
+}
+
+void setVectItem(value Vect, value Idx, value NewVal) {
+      Modify(&Field(Vect, Long_val(Idx)), NewVal);
+}
+
