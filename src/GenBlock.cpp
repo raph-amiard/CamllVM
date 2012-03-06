@@ -791,7 +791,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
                       // Fall through return
         case STOP:
-        case RETURN: Builder->CreateRet(getAccu()); break;
+        case RETURN: {
+            auto RetVal = getAccu();
+            if (Accu->getType() != getValType()) {
+                RetVal = Builder->CreateIntCast(Accu, getValType(), true);
+            }
+            Builder->CreateRet(RetVal); 
+            break;
+        }
         case BRANCH:{
             BasicBlock* LBrBlock = BrBlock->LlvmBlock;
             Builder->CreateBr(LBrBlock);
