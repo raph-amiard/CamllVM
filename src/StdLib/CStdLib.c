@@ -227,6 +227,13 @@ value makeBlock3(value tag, value Val1, value Val2, value Val3) {
       return block;
 }
 
+value makeBlock(value tag, value NbVals) {
+      value block;
+      Alloc_small(block, NbVals, (tag_t)tag);
+      return block;
+}
+
+
 // ============================= C CALLS ============================== //
 
 value primCall(value Prim) {
@@ -352,3 +359,10 @@ void throwException(value ExcVal) {
     Env = NextExceptionContext->Env;
     longjmp(NextExceptionContext->JmpBuf, 1);
 }
+
+value vectLength(value Vect) {
+    mlsize_t Size = Wosize_val(Vect);
+    if (Tag_val(Vect) == Double_array_tag) Size = Size / Double_wosize;
+    return Val_long(Size);
+}
+
