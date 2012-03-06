@@ -724,6 +724,19 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case GETFIELD3: makeGetField(3); break;
         case GETFIELD:  makeGetField(Inst->Args[0]); break;
 
+        case VECTLENGTH:
+            Accu = Builder->CreateCall(getFunction("vectLength"), Accu);
+            break;
+        case GETVECTITEM:
+            Accu = Builder->CreateCall2(getFunction("getVectItem"), Accu, stackPop());
+            break;
+        case SETVECTITEM: {
+            auto Idx = stackPop();
+            auto NewVal = stackPop();
+            Builder->CreateCall3(getFunction("setVectItem"), Accu, Idx, NewVal);
+            break;
+        }
+
         case CLOSUREREC:
             // Simple recursive function with no trampoline and no closure fields
             if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
