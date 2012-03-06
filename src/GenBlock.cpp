@@ -633,6 +633,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Accu = Builder->CreateNot(getAccu());
             break;
 
+        case ISINT: // Untested
+            Accu = Builder->CreateAnd(getAccu(), ConstInt(1));
+            break;
+
 
         case GEINT:
             TmpVal = stackPop();
