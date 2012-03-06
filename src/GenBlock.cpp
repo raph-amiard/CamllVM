@@ -275,16 +275,18 @@ void GenBlock::makeApply(size_t n) {
     } else {
 
         auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), n));
+        Array->setName("ApplyArray");
         for (size_t i = 1; i <= n; i++) {
             vector<Value*> GEPlist; 
             GEPlist.push_back(ConstInt(0));
             GEPlist.push_back(ConstInt(i-1));
-            auto Ptr = Builder->CreateGEP(Array, GEPlist);
+            stringstream ss; ss << "ApplyArrayEl" << i;
+            auto Ptr = Builder->CreateGEP(Array, GEPlist, ss.str());
             auto Val = getStackAt(n-i);
             Builder->CreateStore(Val, Ptr);
         }
 
-        auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo());
+        auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo(), "ApplyArrayPtr");
         getAccu()->setName("ApplyClosure");
         ArgsV.push_back(getAccu());
         ArgsV.push_back(ConstInt(n));
@@ -467,6 +469,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             printf("Accu pointer before: {%p}\n", Accu);
             if (Accu) Accu->dump();
          )
+
+    int StackSize = Stack.size();
 
     switch (Inst->OpNum) {
 
@@ -749,10 +753,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
-        case CLOSUREREC:
+        case CLOSUREREC: {
             // Simple recursive function with no trampoline and no closure fields
-            if (Inst->Args[0] == 1 && Inst->Args[1] == 0) {
-                makeClosure(0, Inst->ClosureRecFns[0]);
+            if (Inst->Args[0] == 1) {
+                makeClosure(Inst->Args[1], Inst->ClosureRecFns[0]);
                 push();
             } else {
                 makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
@@ -760,6 +764,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
+        }
 
         case CLOSURE:
             makeClosure(Inst->Args[0], Inst->Args[1]);
@@ -879,6 +884,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     }
 
+    DEBUG(cout << "Stack DIFF : " << StackSize - Stack.size() << endl;)
     DEBUG(cout << "Instruction generated ===  \n";)
 }
 
