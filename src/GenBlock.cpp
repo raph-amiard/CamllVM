@@ -273,16 +273,18 @@ void GenBlock::makeApply(size_t n) {
     } else {
 
         auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), n));
+        Array->setName("ApplyArray");
         for (size_t i = 1; i <= n; i++) {
             vector<Value*> GEPlist; 
             GEPlist.push_back(ConstInt(0));
             GEPlist.push_back(ConstInt(i-1));
-            auto Ptr = Builder->CreateGEP(Array, GEPlist);
+            stringstream ss; ss << "ApplyArrayEl" << i;
+            auto Ptr = Builder->CreateGEP(Array, GEPlist, ss.str());
             auto Val = getStackAt(n-i);
             Builder->CreateStore(Val, Ptr);
         }
 
-        auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo());
+        auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo(), "ApplyArrayPtr");
         getAccu()->setName("ApplyClosure");
         ArgsV.push_back(getAccu());
         ArgsV.push_back(ConstInt(n));
