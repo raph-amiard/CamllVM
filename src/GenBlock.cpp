@@ -622,6 +622,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 ConstInt(1)
             );
             break;
+        case ASRINT: // Untested
+            Accu = Builder->CreateOr(
+                Builder->CreateAShr(Builder->CreateSub(getAccu(), ConstInt(1)), intVal(stackPop())),
+                ConstInt(1)
+            );
+            break;
 
 
         case GEINT:
