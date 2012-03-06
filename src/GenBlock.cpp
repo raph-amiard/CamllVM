@@ -697,6 +697,21 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             stackPop(); stackPop();
             break;
 
+        case MAKEBLOCK: {
+            size_t BSize = Inst->Args[0];
+            auto Block = Builder->CreateCall2(getFunction("makeBlock"), 
+                                              ConstInt(Inst->Args[1]),
+                                              ConstInt(BSize));
+            Builder->CreateCall3(getFunction("setField"), Block, ConstInt(0) , getAccu());
+
+            for (size_t i = 1; i < BSize; i++) {
+                Builder->CreateCall3(getFunction("setField"), Block, ConstInt(i), stackPop());
+            }
+            Accu = Block;
+            break;
+        }
+
+
         case SETFIELD0: makeSetField(0); break;
         case SETFIELD1: makeSetField(1); break;
         case SETFIELD2: makeSetField(2); break;
