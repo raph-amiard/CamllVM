@@ -390,7 +390,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     auto Closure = Builder->CreateCall3(MakeClos, 
                                         ConstInt(NestClosNbFields + NbFields),
                                         CastPtrs[0], 
-                                        ConstInt(FuncNbArgs));
+                                        ConstInt(FuncNbArgs), "Closure");
 
     // If there are fields, push the Accu on the stack
     if (NbFields > 0) push();
@@ -414,7 +414,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
                              ConstInt(ArgSize));
 
         // Push each closure on the stack
-        Accu = Builder->CreateCall2(getFunction("blockShift"), Closure, ConstInt(GlobalIdx));
+        Accu = Builder->CreateCall2(getFunction("blockShift"), Closure, ConstInt(GlobalIdx), "NestedClos");
         push();
 
         GlobalIdx += 4+ArgSize;
