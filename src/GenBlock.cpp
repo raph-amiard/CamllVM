@@ -479,9 +479,17 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             for (int i = 0; i < Inst->Args[0]; i++) stackPop(); 
             break;
         case PUSH: push(); break;
-        case PUSH_RETADDR:
-            push(); push(); push();
+        case PUSH_RETADDR: {
+            auto AccuSv = Accu;
+            Accu = ConstInt(Val_unit);
+            push(); 
+            Accu = Builder->CreateCall(getFunction("getEnv"));
+            push(); 
+            Accu = ConstInt(Val_unit);
+            push();
+            Accu = AccuSv;            
             break;
+        }
 
         case PUSHTRAP: {
             auto Buf = Builder->CreateCall(getFunction("getNewBuffer"));
@@ -499,7 +507,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Builder->CreateCall(getFunction("removeExceptionContext"));
 
             Builder->SetInsertPoint(Blocks.second);
+            auto AccuSv = Accu;
+            Accu = ConstInt(Val_unit);
             for (int i=0;i<4;i++) push(false);
+            Accu = AccuSv;
             break;
 
         }
@@ -587,44 +598,48 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         case ANDINT: // Untested
             Accu  = Builder->CreateAnd(getAccu(), stackPop());
+            break;
         case ORINT: // Untested
             Accu  = Builder->CreateOr(getAccu(), stackPop());
+            break;
         case XORINT: // Untested
             Accu  = Builder->CreateOr(Builder->CreateXor(getAccu(), stackPop()), 1);
+            break;
         case LSLINT: // Untested
             Accu = Builder->CreateAdd(
                 Builder->CreateShl(Builder->CreateSub(getAccu(), ConstInt(1)), 
                                     intVal(stackPop())),
                 ConstInt(1)
             );
+            break;
         case LSRINT: // Untested
             Accu = Builder->CreateOr(
                 Builder->CreateLShr(Builder->CreateSub(getAccu(), ConstInt(1)), intVal(stackPop())),
                 ConstInt(1)
             );
-
-
-            /*
-    Instruct(ANDINT):
-      accu = (value)((intnat) accu & (intnat) *sp++); Next;
-    Instruct(ORINT):
-      accu = (value)((intnat) accu | (intnat) *sp++); Next;
-    Instruct(XORINT):
-      accu = (value)(((intnat) accu ^ (intnat) *sp++) | 1); Next;
-    Instruct(LSLINT):
-      accu = (value)((((intnat) accu - 1) << Long_val(*sp++)) + 1); Next;
-    Instruct(LSRINT):
-      accu = (value)((((uintnat) accu - 1) >> Long_val(*sp++)) | 1);
-      Next;
-    Instruct(ASRINT):
-      accu = (value)((((intnat) accu - 1) >> Long_val(*sp++)) | 1); Next;
-      */
+            break;
 
 
         case GEINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSGE(getAccu(), TmpVal);
             break;
+        case LTINT:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpSLT(getAccu(), TmpVal);
+            break;
+        case LEINT:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpSLE(getAccu(), TmpVal);
+            break;
+        case ULTINT:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpULT(getAccu(), TmpVal);
+            break;
+        case UGEINT:
+            TmpVal = stackPop();
+            Accu = Builder->CreateICmpUGE(getAccu(), TmpVal);
+            break;            
         case GTINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSGT(getAccu(), TmpVal);
@@ -651,12 +666,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
         case PUSHATOM0: push();
         case ATOM0:
-            Accu = Builder->CreateCall(getFunction("getAtom"), ConstInt(0));
+            Accu = Builder->CreateCall(getFunction("getAtom"), ConstInt(0), "Atom");
             break;
 
         case PUSHATOM: push();
         case ATOM:
-            Accu = Builder->CreateCall(getFunction("getAtom"),
+            Accu = Builder->CreateCall(getFunction("getAtom", "Atom"),
                                        ConstInt(Inst->Args[0]));
             break;
 
