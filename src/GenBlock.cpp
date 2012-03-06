@@ -671,8 +671,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
         case PUSHATOM: push();
         case ATOM:
-            Accu = Builder->CreateCall(getFunction("getAtom", "Atom"),
-                                       ConstInt(Inst->Args[0]));
+            Accu = Builder->CreateCall(getFunction("getAtom"),
+                                       ConstInt(Inst->Args[0]), "Atom");
             break;
 
 
