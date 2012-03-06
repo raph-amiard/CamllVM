@@ -74,7 +74,7 @@ std::string GenBlock::name() {
 }
 
 Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
-    return _getStackAt(n+StackOffset, IgnorePrevBlock)->Val;
+    return _getStackAt(n, IgnorePrevBlock)->Val;
 }
 
 StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
@@ -86,7 +86,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
 
     if (n >= Stack.size()) {
         auto NbPrevBlocks = PrBlocks.size();
-        int PrevStackPos = n - Stack.size();
+        int PrevStackPos = n - Stack.size() + StackOffset;
 
         auto It = PrevStackCache.find(PrevStackPos);
         if (It != PrevStackCache.end()) {
@@ -137,7 +137,7 @@ void GenBlock::handlePHINodes() {
                 Pair.first->addIncoming(Block->getStackAt(Pair.second, this), Block->LlvmBlocks.back());
         }
 
-    auto& IList = LlvmBlock->getInstList();
+    auto& IList = LlvmBlocks.front()->getInstList();
     deque<decltype(IList.begin())> Phis;
     for (auto It=IList.begin(); It != IList.end(); ++It) {
         if (isa<PHINode>(*It)) {
