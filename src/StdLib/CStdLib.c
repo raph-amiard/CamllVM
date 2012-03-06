@@ -32,12 +32,6 @@ value isClosureHeader(value Header) {
     return Tag_hd(Header) == Closure_tag;
 }
 
-/*
-size_t sizeofValue() {
-    return sizeof(value);
-}
-*/
-
 void debug(value Arg) {
     printf("DEBUG : %ld\n", (long) Arg);
 }
@@ -72,10 +66,43 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     return Closure;
 }
 
+value shiftClosure(value Shift) {
+    value* Envv = (value*)Env;
+    while (Shift) {
+        if (Shift < 0) {
+            // We check the field right after the code pointer to see the
+            // closure index. If this is the first, it's a special case
+            // (we want to go back to the 'main' closure) 
+            if (*(Envv+1) == 1)
+                Envv -= 2;
+            else
+                // We find the size of the previous closure from its NbArgs field
+                Envv -= (*(Envv-2) + 4);
+
+            Shift--;
+        } else {
+            value Header = *(Envv-1);
+            // Check if we are in the first closure because its header wosize
+            // includes all others, so we check the tag instead
+            if (Tag_hd(Header) == Closure_tag) {
+                Envv += 2;
+            } else {
+                // if in an 'infix' closure we find the size of the current
+                // closure from the header wosize
+                value WoSize = (*(Envv-1))>>10;
+                Envv += (WoSize + 2);
+            }
+            Shift++;
+        }
+    }
+    Env = (value) Envv;
+}
+
 void closureSetNestedClos(value Closure, value ClosIdx, value FieldIdx,
                           value FPtr,    value NbArgs) {
     Field(Closure, ClosIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
     Field(Closure, ClosIdx + 1) = (code_t)FPtr;
+    Field(Closure, ClosIdx + 2) = FieldIdx;
     Field(Closure, ClosIdx + 3 + NbArgs) = NbArgs;
 }
 

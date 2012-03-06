@@ -379,9 +379,10 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     int FuncNbArgs = DestGenFuncs[0]->LlvmFunc->arg_size();
 
     // 1 nested closure takes up:
-    // 1 header + 1 code pointer + NbArgs fields + 2
-    // i.e. 4 + NbArgs
-    int32_t NestClosNbFields = NbFuncs*4 + AllNbArgs;
+    // 1 header + 1 code pointer + NbArgs fields + 2 + 1 'field' directly
+    // after the code pointer containing the closure index
+    // i.e. 5 + NbArgs
+    int32_t NestClosNbFields = NbFuncs*5 + AllNbArgs;
 
     auto Closure = Builder->CreateCall3(MakeClos, 
                                         ConstInt(NestClosNbFields + NbFields),
@@ -422,32 +423,11 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
 void GenBlock::offsetClosure(int32_t n) {
     // In the ZAM, 'infix' closures take up exactly 2 fields so n should be even
-    if (n%2 != 0) return;
+    if (n%2 != 0)
+        throw std::logic_error("OFFSETCLOSURE instruction malformed !");
 
-    int32_t Shift = n/2;
-    int64_t * Env = (int64_t*) Builder->CreateCall(getFunction("getEnv"));
-    while (Shift) {
-        if (Shift < 0) {
-            // /!\ The common case (i.e. we're in the second closure) is not checked
-            // We find the size of the previous closure from its NbArgs field
-            Env -= (*(Env-2) + 4);
-            Shift--;
-        } else {
-            int64_t Header = *(Env-1);
-            // Check if we are in the first closure because its header wosize
-            // includes all others, so we check the tag instead
-            if (Builder->CreateCall(getFunction("isClosureHeader"), ConstInt(Header))) {
-                Env += 2;
-            } else {
-                // if in an 'infix' closure we find the size of the current
-                // closure from the header wosize
-                int64_t WoSize = (*(Env-1))>>10;
-                Env += (WoSize + 2);
-            }
-            Shift++;
-        }
-    }
-    Accu = (llvm::Value*)Env;
+    Builder->CreateCall(getFunction("shiftClosure"), ConstInt(n/2));
+    Accu = Builder->CreateCall(getFunction("getEnv"));
 }
 
 void GenBlock::makeSetField(size_t n) {
