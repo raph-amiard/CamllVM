@@ -795,6 +795,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
+        // Closure related Instructions
         case CLOSUREREC: {
             // Simple recursive function with no trampoline
             if (Inst->Args[0] == 1) {
@@ -812,12 +813,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             makeClosure(Inst->Args[0], Inst->Args[1]);
             break;
 
-        case PUSHOFFSETCLOSURE:
-            push();
+        case PUSHOFFSETCLOSURE: push();
         case OFFSETCLOSURE: offsetClosure(Inst->Args[0]); break;
 
-        case PUSHOFFSETCLOSUREM2:
-            push();
+        case PUSHOFFSETCLOSUREM2: push();
         case OFFSETCLOSUREM2: offsetClosure(-2); break;
 
         case PUSHOFFSETCLOSURE0:
@@ -833,12 +832,30 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case OFFSETCLOSURE2: offsetClosure(2); break;
 
 
+        // Object oriented Instructions
+        case GETMETHOD:
+            Accu = Builder->CreateCall2(getFunction("getMethod"),
+                                        getStackAt(0),
+                                        getAccu());
+            break;
+        case GETPUBMET:
+            push();
+            Accu = ConstInt(Inst->Args[0]);
+            // FALLTHROUGH
+        case GETDYNMET:
+            Accu = Builder->CreateCall2(getFunction("getDynMethod"), getStackAt(0), getAccu());
+            break;
+
+
+        // C Calls Instructions
         case C_CALL1: makePrimCall(1, Inst->Args[0]); break;
         case C_CALL2: makePrimCall(2, Inst->Args[0]); break;
         case C_CALL3: makePrimCall(3, Inst->Args[0]); break;
         case C_CALL4: makePrimCall(4, Inst->Args[0]); break;
         case C_CALL5: makePrimCall(5, Inst->Args[0]); break;
 
+
+        // Apply Instructions
         case APPLY1: makeApply(1); break;
         case APPLY2: makeApply(2); break;
         case APPLY3: makeApply(3); break;

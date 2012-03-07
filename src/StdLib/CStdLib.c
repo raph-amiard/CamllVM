@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <setjmp.h>
 
+#define Lookup(obj, lab) Field (Field (obj, 0), Int_val(lab))
+
 /* GC interface */
 
 #define Setup_for_gc \
@@ -404,3 +406,21 @@ void setStringChar(value String, value CharIdx, value Char) {
     Byte_u(String, Long_val(CharIdx)) = Int_val(Char);
 }
 
+// ============================= OBJECTS ============================== //
+
+value getMethod(value Object, value Label) {
+    return Lookup(Object, Label);
+}
+
+value getDynMethod(value Object, value Tag) {
+      value Methods = Field (Object, 0);
+      int Li = 3, 
+          Hi = Field(Methods,0), 
+          Mi;
+      while (Li < Hi) {
+        Mi = ((Li+Hi) >> 1) | 1;
+        if (Tag < Field(Methods,Mi)) Hi = Mi-2;
+        else Li = Mi;
+      }
+      return Field (Methods, Li-1);
+}
