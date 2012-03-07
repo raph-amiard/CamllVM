@@ -55,7 +55,7 @@ void debug(value Arg) {
 value makeClosure(value NVars, value FPtr, value NbArgs) {
     //printf("IN MAKE CLOSURE\n");
     value Closure;
-    int BlockSize = 3 + NVars + NbArgs;
+    int BlockSize = 2 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
     // Set the code pointer
     Code_val(Closure) = (code_t)FPtr;
@@ -66,7 +66,7 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     return Closure;
 }
 
-value shiftClosure(value Shift) {
+void shiftClosure(value Shift) {
     value* Envv = (value*)Env;
     while (Shift) {
         if (Shift < 0) {
@@ -101,7 +101,7 @@ value shiftClosure(value Shift) {
 void closureSetNestedClos(value Closure, value ClosIdx, value FieldIdx,
                           value FPtr,    value NbArgs) {
     Field(Closure, ClosIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
-    Field(Closure, ClosIdx + 1) = (code_t)FPtr;
+    Field(Closure, ClosIdx + 1) = FPtr;
     Field(Closure, ClosIdx + 2) = FieldIdx;
     Field(Closure, ClosIdx + 3 + NbArgs) = NbArgs;
 }
@@ -231,6 +231,20 @@ value makeBlock(value tag, value NbVals) {
       value block;
       Alloc_small(block, NbVals, (tag_t)tag);
       return block;
+}
+
+value makeFloatBlock(value Size) {
+      value Block;
+      if (Size <= Max_young_wosize / Double_wosize) {
+        Alloc_small(Block, Size * Double_wosize, Double_array_tag);
+      } else {
+        Block = caml_alloc_shr(Size * Double_wosize, Double_array_tag);
+      }
+      return Block;
+}
+
+void storeDoubleField(value Block,  value Val) {
+    Store_double_field(Block, 0, Double_val(Val));
 }
 
 
