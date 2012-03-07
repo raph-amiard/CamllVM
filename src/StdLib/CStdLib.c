@@ -73,24 +73,26 @@ void shiftClosure(value Shift) {
             // We check the field right after the code pointer to see the
             // closure index. If this is the first, it's a special case
             // (we want to go back to the 'main' closure) 
-            if (*(Envv+2) == 1)
+            if (*(Envv+2) == 1) {
+                printf("First Nested closure -> main closure\n");
                 Envv -= 2;
-            else
+            }
+            else {
                 // We find the size of the previous closure from its NbArgs field
+                printf("N Nested closure -> N-1 Nested closure\n");
                 Envv -= (*(Envv-1) + 4);
+            }
 
             Shift++;
         } else {
-            printf("accessing header\n");
-            value Header = *(Envv);
-            printf("Header = %x\n", Header);
+            value Header = Hd_val(Envv);
             // Check if we are in the first closure because its header wosize
             // includes all others, so we check the tag instead
             if (Tag_hd(Header) == Closure_tag) {
                 printf("main closure shift to first nested\n");
                 Envv += 2;
             } else {
-                printf("general case\n");
+                printf("general case\nN Nested closure -> N+1 nested closure\n");
                 // if in an 'infix' closure we find the size of the current
                 // closure from the header wosize
                 value WoSize = (*(Envv))>>10;
@@ -109,13 +111,13 @@ void closureSetNestedClos(value Closure, value CurrentIdx, value ClosureIdx,
     printf("================================\nIN closureSetNestedClos\n=======================================\n");
     printf("@Closure : %p\n", (void*)Closure);
     printf("@NestedClosure : %p\n", (void*)&Field(Closure, CurrentIdx));
-    printf("Field(%ld) = %x\n", CurrentIdx,Make_header(3 + NbArgs, Infix_tag, Caml_white));
+    //printf("Field(%ld) = %x\n", CurrentIdx,Make_header(3 + NbArgs, Infix_tag, Caml_white));
     Field(Closure, CurrentIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
-    printf("Field(%ld) = %p\n", CurrentIdx+1, FPtr);
+    //printf("Field(%ld) = %p\n", CurrentIdx+1, FPtr);
     Field(Closure, CurrentIdx + 1) = FPtr;
-    printf("Field(%ld) = %ld\n", CurrentIdx+2, ClosureIdx);
+    //printf("Field(%ld) = %ld\n", CurrentIdx+2, ClosureIdx);
     Field(Closure, CurrentIdx + 2) = ClosureIdx;
-    printf("Field(%ld) = %ld\n", CurrentIdx + 3 + NbArgs, NbArgs);
+    //printf("Field(%ld) = %ld\n", CurrentIdx + 3 + NbArgs, NbArgs);
     Field(Closure, CurrentIdx + 3 + NbArgs) = NbArgs;
     printf("=============================\n OUT closureSetNestedClos\n=================================\n");
 }

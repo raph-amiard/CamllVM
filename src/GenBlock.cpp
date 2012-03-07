@@ -265,8 +265,6 @@ void GenBlock::makeApply(size_t n) {
     vector<Value*> ArgsV;
 
     if (CI.IsBare && CI.LlvmFunc->arg_size() == n) {
-        cout << "========== makeApply =========\nBare function\n";
-
         for (size_t i = 1; i <= n; i++)
             ArgsV.push_back(getStackAt(n-i));
 
@@ -274,8 +272,6 @@ void GenBlock::makeApply(size_t n) {
         makeCheckedCall(CI.LlvmFunc, ArgsV);
 
     } else {
-        cout << "========== makeApply =========\nApply call\n";
-
         auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), n));
         Array->setName("ApplyArray");
         for (size_t i = 1; i <= n; i++) {
@@ -379,7 +375,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
         auto ClosureFunc = DestGenFunc->ApplierFunction;
         CastPtrs.push_back(Builder->CreatePtrToInt(ClosureFunc, getValType()));
-        cout << "CASTPTRS " << i << " = " << CastPtrs[i] << endl;
+
         AllNbArgs += DestGenFunc->LlvmFunc->arg_size();
     }
 
@@ -419,10 +415,10 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
         // Push each closure on the stack
         Accu = Builder->CreateCall2(getFunction("blockShift"), Closure, ConstInt(GlobalIdx), "NestedClos");
+        push();
 
         ClosureInfo CI = {DestGenFuncs[i]->LlvmFunc, true};
         this->Function->ClosuresFunctions[Accu] = CI;
-        push();
 
         GlobalIdx += 4+ArgSize;
     }
