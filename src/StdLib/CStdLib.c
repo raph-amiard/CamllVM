@@ -29,10 +29,6 @@ value getEnv() {
     return Env;
 }
 
-value isClosureHeader(value Header) {
-    return Tag_hd(Header) == Closure_tag;
-}
-
 void debug(value Arg) {
     printf("DEBUG : %ld\n", (long) Arg);
 }
@@ -56,18 +52,18 @@ void debug(value Arg) {
 value makeClosure(value NVars, value FPtr, value NbArgs) {
     //printf("IN MAKE CLOSURE\n");
     value Closure;
-    int BlockSize = 3 + NVars + NbArgs;
+    int BlockSize = 2 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
     // Set the code pointer
     Code_val(Closure) = (code_t)FPtr;
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
-    printf("CLOSURE ADDR: %p\n", (void*)Closure);
+    //printf("CLOSURE ADDR: %p\n", (void*)Closure);
     //printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
     return Closure;
 }
 
-value shiftClosure(value Shift) {
+void shiftClosure(value Shift) {
     printf("===================\nshiftClosure\n===============\n");
     printf("Shift = %ld\n", Shift);
     printf("Env = %p\n", (void*)Env);
@@ -113,9 +109,10 @@ void closureSetNestedClos(value Closure, value CurrentIdx, value ClosureIdx,
     printf("================================\nIN closureSetNestedClos\n=======================================\n");
     printf("@Closure : %p\n", (void*)Closure);
     printf("@NestedClosure : %p\n", (void*)&Field(Closure, CurrentIdx));
+    printf("Field(%ld) = %x\n", CurrentIdx,Make_header(3 + NbArgs, Infix_tag, Caml_white));
     Field(Closure, CurrentIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
     printf("Field(%ld) = %p\n", CurrentIdx+1, FPtr);
-    Field(Closure, CurrentIdx + 1) = (code_t)FPtr;
+    Field(Closure, CurrentIdx + 1) = FPtr;
     printf("Field(%ld) = %ld\n", CurrentIdx+2, ClosureIdx);
     Field(Closure, CurrentIdx + 2) = ClosureIdx;
     printf("Field(%ld) = %ld\n", CurrentIdx + 3 + NbArgs, NbArgs);

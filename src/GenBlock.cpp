@@ -265,6 +265,7 @@ void GenBlock::makeApply(size_t n) {
     vector<Value*> ArgsV;
 
     if (CI.IsBare && CI.LlvmFunc->arg_size() == n) {
+        cout << "========== makeApply =========\nBare function\n";
 
         for (size_t i = 1; i <= n; i++)
             ArgsV.push_back(getStackAt(n-i));
@@ -273,6 +274,7 @@ void GenBlock::makeApply(size_t n) {
         makeCheckedCall(CI.LlvmFunc, ArgsV);
 
     } else {
+        cout << "========== makeApply =========\nApply call\n";
 
         auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), n));
         Array->setName("ApplyArray");
@@ -384,9 +386,9 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     int FuncNbArgs = DestGenFuncs[0]->LlvmFunc->arg_size();
 
     // 1 nested closure takes up:
-    // 1 header + 1 code pointer + NbArgs fields + 2 + 1 'field' directly
+    // 1 header + 1 code pointer + NbArgs fields + 1 NbArg field + 1 'field' directly
     // after the code pointer containing the closure index
-    // i.e. 5 + NbArgs
+    // i.e. 4 + NbArgs
     int32_t NestClosNbFields = NbFuncs*4 + AllNbArgs;
 
     auto Closure = Builder->CreateCall3(MakeClos, 
@@ -417,6 +419,9 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
         // Push each closure on the stack
         Accu = Builder->CreateCall2(getFunction("blockShift"), Closure, ConstInt(GlobalIdx), "NestedClos");
+
+        ClosureInfo CI = {DestGenFuncs[i]->LlvmFunc, true};
+        this->Function->ClosuresFunctions[Accu] = CI;
         push();
 
         GlobalIdx += 4+ArgSize;
