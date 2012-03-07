@@ -735,6 +735,15 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
+        case MAKEFLOATBLOCK: { // Untested
+            size_t BSize = Inst->Args[0];
+            auto FloatBlock = Builder->CreateCall(getFunction("makeFloatBlock"), 
+                                                  ConstInt(BSize));
+            Builder->CreateCall2(getFunction("storeDoubleField"), FloatBlock, Accu);
+            for (size_t i = 1; i < BSize; i++) {
+                Builder->CreateCall2(getFunction("storeDoubleField"), FloatBlock, stackPop());
+            }
+        }
 
         case SETFIELD0: makeSetField(0); break;
         case SETFIELD1: makeSetField(1); break;
