@@ -131,8 +131,8 @@ value blockShift(value Block, value Shift) {
 
 value apply(value Closure, value NbArgs, value* Args) {
 
-    //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Closure);
-    //printf("ARG 1 = %p\n", Args[0]);
+    printf("IN APPLYZE, CLOSURE = %p, NBARGS = %ld \n", (void*)Closure, NbArgs);
+    printf("ARG 1 = %d\n", Args[0]);
 
     int ArgsSize = NbArgs;
     value CClosure = Closure;
@@ -140,6 +140,7 @@ value apply(value Closure, value NbArgs, value* Args) {
     // While we still have arg to apply 
     while (NbArgs > 0) {
 
+        printf("APPLYING ARGS\n");
         // Get the number of args the current closure needs
         int Size = Wosize_val(CClosure);
         //printf("SIZE = %d\n", Size);
@@ -160,6 +161,7 @@ value apply(value Closure, value NbArgs, value* Args) {
             return CClosure;
         }
 
+        printf("APPLYING THE CLOZRS\n");
         // If the closure is full, apply it
         value (*FPtr)(value) = (value(*)(value)) Code_val(CClosure);
         value OldEnv = Env;
