@@ -739,9 +739,9 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             size_t BSize = Inst->Args[0];
             auto FloatBlock = Builder->CreateCall(getFunction("makeFloatBlock"), 
                                                   ConstInt(BSize));
-            Builder->CreateCall2(getFunction("storeDoubleField"), FloatBlock, Accu);
+            Builder->CreateCall3(getFunction("storeDoubleField"), FloatBlock, ConstInt(0), Accu);
             for (size_t i = 1; i < BSize; i++) {
-                Builder->CreateCall2(getFunction("storeDoubleField"), FloatBlock, stackPop());
+                Builder->CreateCall3(getFunction("storeDoubleField"), FloatBlock, ConstInt(i), stackPop());
             }
         }
 
@@ -750,6 +750,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case SETFIELD2: makeSetField(2); break;
         case SETFIELD3: makeSetField(3); break;
         case SETFIELD:  makeSetField(Inst->Args[0]); break;
+        case SETFLOATFIELD: { // Untested
+            Builder->CreateCall3(getFunction("storeDoubleField"), 
+                                Accu, 
+                                ConstInt(Inst->Args[0]), 
+                                stackPop());
+            Accu = ConstInt(Val_unit);
+            break;
+        }
 
         case GETFIELD0: makeGetField(0); break;
         case GETFIELD1: makeGetField(1); break;
@@ -757,7 +765,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case GETFIELD3: makeGetField(3); break;
         case GETFIELD:  makeGetField(Inst->Args[0]); break;
         case GETFLOATFIELD:
-            Accu = Builder->CreateCall2(getFunction("getFloatField"), Accu, ConstInt(Inst->Args[0]));
+            Accu = Builder->CreateCall2(getFunction("getDoubleField"), Accu, ConstInt(Inst->Args[0]));
             break;
 
         case VECTLENGTH:

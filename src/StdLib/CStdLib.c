@@ -404,5 +404,3 @@ void setStringChar(value String, value CharIdx, value Char) {
     Byte_u(String, Long_val(CharIdx)) = Int_val(Char);
 }
 
-
-
