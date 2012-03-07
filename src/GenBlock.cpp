@@ -756,6 +756,9 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case GETFIELD2: makeGetField(2); break;
         case GETFIELD3: makeGetField(3); break;
         case GETFIELD:  makeGetField(Inst->Args[0]); break;
+        case GETFLOATFIELD:
+            Accu = Builder->CreateCall2(getFunction("getFloatField"), Accu, ConstInt(Inst->Args[0]));
+            break;
 
         case VECTLENGTH:
             Accu = Builder->CreateCall(getFunction("vectLength"), Accu);
@@ -770,8 +773,22 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
 
+        case GETSTRINGCHAR: { // Untested
+            auto CharIdx = stackPop();
+            Accu = Builder->CreateCall2(getFunction("getStringChar"), Accu, CharIdx);
+            break;
+        }
+
+        case SETSTRINGCHAR: { // Untested
+            auto CharIdx = stackPop();
+            auto CharVal = stackPop();
+            Builder->CreateCall3(getFunction("setStringChar"), Accu, CharIdx, CharVal);
+            Accu = ConstInt(Val_unit);
+            break;
+        }
+
         case CLOSUREREC: {
-            // Simple recursive function with no trampoline and no closure fields
+            // Simple recursive function with no trampoline
             if (Inst->Args[0] == 1) {
                 makeClosure(Inst->Args[1], Inst->ClosureRecFns[0]);
                 push();

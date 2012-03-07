@@ -235,7 +235,7 @@ value makeBlock(value tag, value NbVals) {
 
 value makeFloatBlock(value Size) {
       value Block;
-      if (Size <= Max_young_wosize / Double_wosize) {
+      if ((unsigned)Size <= Max_young_wosize / Double_wosize) {
         Alloc_small(Block, Size * Double_wosize, Double_array_tag);
       } else {
         Block = caml_alloc_shr(Size * Double_wosize, Double_array_tag);
@@ -245,6 +245,14 @@ value makeFloatBlock(value Size) {
 
 void storeDoubleField(value Block,  value Val) {
     Store_double_field(Block, 0, Double_val(Val));
+}
+
+value getDoubleField(value Block, value Idx) {
+    double d = Double_field(Block, Idx);
+    value Double;
+    Alloc_small(Double, Double_wosize, Double_tag);
+    Store_double_val(Double, d);
+    return Double;
 }
 
 
@@ -387,4 +395,14 @@ value getVectItem(value Vect, value Idx) {
 void setVectItem(value Vect, value Idx, value NewVal) {
       Modify(&Field(Vect, Long_val(Idx)), NewVal);
 }
+
+value getStringChar(value String, value CharIdx) {
+      return Val_int(Byte_u(String, Long_val(CharIdx)));
+}
+
+void setStringChar(value String, value CharIdx, value Char) {
+    Byte_u(String, Long_val(CharIdx)) = Int_val(Char);
+}
+
+
 
