@@ -770,7 +770,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 push();
             } else {
                 makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
-                push();
                 // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
