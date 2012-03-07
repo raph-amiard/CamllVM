@@ -833,16 +833,16 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
 
         // Object oriented Instructions
-        case GETMETHOD:
+        case GETMETHOD: // Untested
             Accu = Builder->CreateCall2(getFunction("getMethod"),
                                         getStackAt(0),
                                         getAccu());
             break;
-        case GETPUBMET:
+        case GETPUBMET: // Untested
             push();
             Accu = ConstInt(Inst->Args[0]);
             // FALLTHROUGH
-        case GETDYNMET:
+        case GETDYNMET: // Untested
             Accu = Builder->CreateCall2(getFunction("getDynMethod"), getStackAt(0), getAccu());
             break;
 

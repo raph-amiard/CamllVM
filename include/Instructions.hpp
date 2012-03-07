@@ -110,7 +110,7 @@
     code(BRANCH, 1) \
     code(BRANCHIF, 1) \
     code(BRANCHIFNOT, 1) \
-    code(SWITCH, 2) \
+    code(SWITCH, 1) \
     code(BOOLNOT, 0) \
     code(PUSHTRAP, 1) \
     code(POPTRAP, 0) \
@@ -234,6 +234,7 @@ public:
     int32_t Args[4];
     int32_t idx;
     int32_t ClosureRecFns[32];
+    std::vector<int32_t> SwitchEntries;
     uint32_t Annotation;
 
     inline unsigned short Arity() {
@@ -253,6 +254,10 @@ public:
         if (this->isClosureRec())
             for (int i = 0; i < Args[0]; i++) 
                 std::cout << this->ClosureRecFns[i] << " ";
+        
+        if (this->isSwitch())
+            for (auto SwEnt : SwitchEntries)
+                std::cout << SwEnt << " ";
 
         std::cout << std::endl;
     }
@@ -290,6 +295,10 @@ public:
 
     inline bool isClosureRec() {
         return OpNum == CLOSUREREC;
+    }
+
+    inline bool isSwitch() {
+        return OpNum == SWITCH;
     }
 
     inline bool isReturn() {

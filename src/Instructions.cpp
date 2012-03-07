@@ -47,6 +47,17 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
             InstsToAdjust.push_back(Inst);
         }
 
+        if (Inst->OpNum == SWITCH) {
+            Pos++;
+            auto NumSwitchEntries = (Inst->Args[0] >> 16) + (Inst->Args[0] & 0XFFFF);
+            for (int j = 0; j < NumSwitchEntries; j++) {
+                auto ArgVal = toBigEndian(*TabInst++);
+                Inst->SwitchEntries.push_back(Pos + ArgVal);
+            }
+            Pos += NumSwitchEntries - 1;
+            InstsToAdjust.push_back(Inst);
+        }
+
         i++;
         Instructions.push_back(Inst);
     }
@@ -55,6 +66,12 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
         if (Inst->OpNum == CLOSUREREC) {
             for (int j = 0; j < Inst->Args[0]; j++) {
                 Inst->ClosureRecFns[j] = InstPositions[Inst->ClosureRecFns[j]]->idx;
+            }
+        } else if (Inst->OpNum == SWITCH) {
+            int j = 0;
+            for (auto Pos : Inst->SwitchEntries) {
+                Inst->SwitchEntries[j] = InstPositions[Pos]->idx;
+                j++;
             }
         } else {
             int ArgIdx = Inst->getCodeOffsetArgIdx();
@@ -74,6 +91,10 @@ void annotateNodes(vector<ZInstruction*>& Instructions) {
             for (int j = 0; j < Inst->Args[0]; j++)
                 Instructions[Inst->ClosureRecFns[j]]->Annotation = FUNCTION_START;
         } 
+        if (Inst->isSwitch()) {
+            for (auto Dest : Inst->SwitchEntries)
+                Instructions[Dest]->Annotation = BLOCK_START;
+        }
         if (Inst->OpNum == PUSHTRAP) {
             Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;
         } 
