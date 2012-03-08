@@ -55,7 +55,7 @@ void debug(value Arg) {
 // It is compatible with the regular ocaml runtime's closure layout 
 
 value makeClosure(value NVars, value FPtr, value NbArgs) {
-    //printf("IN MAKE CLOSURE\n");
+    printf("IN MAKE CLOSURE, NVars = %ld, FPtr = %p, NbArgs = %ld\n",NVars, (void*)FPtr, NbArgs);
     value Closure;
     int BlockSize = 2 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
@@ -63,49 +63,24 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     Code_val(Closure) = (code_t)FPtr;
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
-    //printf("CLOSURE ADDR: %p\n", (void*)Closure);
-    //printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
+    printf("CLOSURE ADDR: %p\n", (void*)Closure);
+    printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
     return Closure;
 }
 
-void shiftClosure(value Shift) {
-    value* Envv = (value*)Env;
-    while (Shift) {
-        if (Shift < 0) {
-            // We check the field right after the code pointer to see the
-            // closure index. If this is the first, it's a special case
-            // (we want to go back to the 'main' closure) 
-            if (*(Envv+1) == 1)
-                Envv -= 2;
-            else
-                // We find the size of the previous closure from its NbArgs field
-                Envv -= (*(Envv-2) + 4);
-
-            Shift--;
-        } else {
-            value Header = *(Envv-1);
-            // Check if we are in the first closure because its header wosize
-            // includes all others, so we check the tag instead
-            if (Tag_hd(Header) == Closure_tag) {
-                Envv += 2;
-            } else {
-                // if in an 'infix' closure we find the size of the current
-                // closure from the header wosize
-                value WoSize = (*(Envv-1))>>10;
-                Envv += (WoSize + 2);
-            }
-            Shift++;
-        }
-    }
-    Env = (value) Envv;
+value shiftClosure(value Shift) {
+    return Env + (Shift*sizeof(value));
 }
 
-void closureSetNestedClos(value Closure, value ClosIdx, value FieldIdx,
+// Usage
+// ClosureSetNext(MainClosure, NestedClosureOffset,
+//                NestedClosureSize, NestedFunctionPtr,
+//                NestedClosureNbArgs)
+void closureSetNestedClos(value Closure, value NClOffset, value NClSize,
                           value FPtr,    value NbArgs) {
-    Field(Closure, ClosIdx) = Make_header(3 + NbArgs, Infix_tag, Caml_white);
-    Field(Closure, ClosIdx + 1) = FPtr;
-    Field(Closure, ClosIdx + 2) = FieldIdx;
-    Field(Closure, ClosIdx + 3 + NbArgs) = NbArgs;
+    Field(Closure, NClOffset-1) = Make_header(NClSize, Infix_tag, Caml_white);
+    Field(Closure, NClOffset) = FPtr;
+    Field(Closure, NClSize-1) = NbArgs;
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {

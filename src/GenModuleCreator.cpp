@@ -123,53 +123,35 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
     // Get the first block
     Function->FirstBlock = Function->Blocks[Instructions->at(0)->idx];
 
+    GenBlock* CBlock = nullptr;
     while (Instructions->size()) {
 
         // Get the first remaining instruction
         ZInstruction* Inst = Instructions->at(0);
         Instructions->pop_front();
-        
 
-        if (Inst->Annotation != BLOCK_START)
-            throw std::logic_error("Malformed blocks ! ");
+        if (Inst->Annotation == BLOCK_START) {
 
-        // Get the corresponding block
-        GenBlock* CBlock = Function->Blocks[Inst->idx];
-        CBlock->Instructions.push_back(Inst);
-
-        if (Inst->isJumpInst())
-            CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
-
-        if (Inst->OpNum == PUSHTRAP) {
-            CBlock->setNext(Function->Blocks[Inst->Args[0]], true);
-        }
-
-        // Put all the instructions into the block
-        // Until we reach the next BLOCK_START
-        while (Instructions->size()) {
-            Inst = Instructions->at(0);
-
-            // If the next inst is a block start, get out
-            if (Inst->Annotation == BLOCK_START) {
-
-                // But before, make the block connections if necessary
+            // Make the block connections if necessary
+            if (CBlock) {
                 ZInstruction* LastInst = CBlock->Instructions.back();
                 if (!(LastInst->isUncondJump() || LastInst->isReturn())) {
                     CBlock->setNext(Function->Blocks[Inst->idx], false);
                 }
-                break;
             }
 
-            Instructions->pop_front();
-            CBlock->Instructions.push_back(Inst);
+            // Set the current block
+            CBlock = Function->Blocks[Inst->idx];
+        }
 
-            // If we stumble on a jump instruction
-            // Reference the destination block as a next block
-            // And reference the current block as a previous block
-            // of the destination
-            if (Inst->isJumpInst() || Inst->OpNum == PUSHTRAP) {
-                CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
-            }
+        CBlock->Instructions.push_back(Inst);
+
+        if (Inst->isJumpInst() || Inst->OpNum == PUSHTRAP)
+            CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
+
+        if (Inst->isSwitch()) {
+            for (auto Dest : Inst->SwitchEntries)
+                CBlock->setNext(Function->Blocks[Dest], false);
         }
     }
 

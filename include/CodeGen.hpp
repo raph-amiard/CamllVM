@@ -108,7 +108,7 @@ public:
     void makePrimCall(size_t n, int32_t NumPrim);
     void makeClosure(int32_t NbFields, int32_t FnId);
     void makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds);
-    void offsetClosure(int32_t n);
+    void makeOffsetClosure(int32_t n);
     void makeSetField(size_t n);
     void makeGetField(size_t n);
     void debug(llvm::Value* DbgVal);

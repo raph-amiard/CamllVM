@@ -356,7 +356,6 @@ void GenBlock::makeClosure(int32_t NbFields, int32_t FnId) {
 void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds) {
 
     auto MakeClos = getFunction("makeClosure");
-    auto ClosSetVar = getFunction("closureSetVar");
     auto ClosSetNest = getFunction("closureSetNestedClos");
 
     vector<GenFunction*> DestGenFuncs;
@@ -375,45 +374,75 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
         auto ClosureFunc = DestGenFunc->ApplierFunction;
         CastPtrs.push_back(Builder->CreatePtrToInt(ClosureFunc, getValType()));
-        AllNbArgs += DestGenFunc->LlvmFunc->arg_size();
+        // Accumulate the number of all arguments 
+        // except thoses of the main function
+        if (i > 0)
+            AllNbArgs += DestGenFunc->LlvmFunc->arg_size() + 1;
     }
 
+    /* ------------------------------------------------------------------------------------------------------------
+     * |MainClCodePtr|Header1|NestedClos1|...|Field1|...|NestClosArgsn|NestClosNbArgsn|...|MainClArgs|MainClNbArgs|
+     * ------------------------------------------------------------------------------------------------------------
+     * Example with 3 functions, fn1(a), fn2(a, b), fn3(a,b)
+     *
+     *                     <--------fn3 closure size : 7 ----------->                                      
+     * ----------------------------------------------------------------------------------------------------
+     * |fn1|HdFn2|fn2|hdfn3|fn3|Fld1|Fld2|Fld3|fn3a1|fn3a2|fn3nbargs|fn2a1|fn2a2|fn2nbargs|fn1a1|fn1nbargs|
+     * ----------------------------------------------------------------------------------------------------
+     *           <------------------------------fn2 closure size : 12 -------------------->                
+     * <----------------------------------------Main closure size : 16 ----------------------------------->
+     */
+    
+    // Get the main closure function number of args
     int FuncNbArgs = DestGenFuncs[0]->LlvmFunc->arg_size();
 
-    // 1 nested closure takes up:
-    // 1 header + 1 code pointer + NbArgs fields + 2 + 1 'field' directly
-    // after the code pointer containing the closure index
-    // i.e. 5 + NbArgs
-    int32_t NestClosNbFields = NbFuncs*5 + AllNbArgs;
-
+    // Calculate the number of fields necessary to store everything
+    // except : - The main code ptr
+    //          - The main nb args
+    //          - The main args slots
+    //  That are given separately to the makeClosure function
+    size_t NbReqFields = (NbFuncs-1)*2 + NbFields + AllNbArgs;
+    cout << "NBFIELDS : " << NbFields;
+    cout << "NBREQFIELDS : " << NbReqFields << endl;
     auto Closure = Builder->CreateCall3(MakeClos, 
-                                        ConstInt(NestClosNbFields + NbFields),
+                                        ConstInt(NbReqFields),
                                         CastPtrs[0], 
                                         ConstInt(FuncNbArgs));
+
 
     // If there are fields, push the Accu on the stack
     if (NbFields > 0) push();
 
     // Set Closure's nested closures
-    int32_t NestClosIdx = 1;
-    int64_t ArgSize;
-    for (int i = 1; i < NbFuncs; i++) {
-        ArgSize = DestGenFuncs[i]->LlvmFunc->arg_size();
+    
+    // Offset where the current offset closure starts relatively to the first
+    int32_t NestClosOfs = 2;
+    // Nested closure relative size
+    size_t NClosSize = (NbReqFields + 2 + FuncNbArgs) - NestClosOfs - FuncNbArgs - 1;
 
+    for (int i = 1; i < NbFuncs; i++) {
+        auto ArgSize = DestGenFuncs[i]->LlvmFunc->arg_size();
+
+        // Usage : 
+        // ClosureSetNext(MainClosure, NestedClosureOffset,
+        //                NestedClosureSize, NestedFunctionPtr,
+        //                NestedClosureNbArgs)
         Builder->CreateCall5(ClosSetNest,
                              Closure,
-                             ConstInt(NestClosIdx),
-                             ConstInt(i),
+                             ConstInt(NestClosOfs),
+                             ConstInt(NClosSize),
                              CastPtrs[i],
                              ConstInt(ArgSize));
 
-        NestClosIdx += 4+ArgSize;
+        NestClosOfs += 2;
+        NClosSize -= 2 + ArgSize;
     }
 
     // Set Closure fields
+    auto FieldOffset = 1 + (2 * (NbFuncs-1));
     for (int i = 0; i < NbFields; i++) {
         auto FieldVal = stackPop();
-        Builder->CreateCall3(ClosSetVar, Closure, ConstInt(i), FieldVal);
+        Builder->CreateCall3(getFunction("setField"), Closure, ConstInt(i+FieldOffset), FieldVal);
     }
 
     Accu = Closure;
@@ -423,13 +452,8 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     this->Function->ClosuresFunctions[Accu] = CI;
 }
 
-void GenBlock::offsetClosure(int32_t n) {
-    // In the ZAM, 'infix' closures take up exactly 2 fields so n should be even
-    if (n%2 != 0)
-        throw std::logic_error("OFFSETCLOSURE instruction malformed !");
-
-    Builder->CreateCall(getFunction("shiftClosure"), ConstInt(n/2));
-    Accu = Builder->CreateCall(getFunction("getEnv"));
+void GenBlock::makeOffsetClosure(int32_t n) {
+    Accu = Builder->CreateCall(getFunction("shiftClosure"), ConstInt(n));
 }
 
 void GenBlock::makeSetField(size_t n) {
@@ -814,10 +838,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case PUSHOFFSETCLOSURE: push();
-        case OFFSETCLOSURE: offsetClosure(Inst->Args[0]); break;
+        case OFFSETCLOSURE: makeOffsetClosure(Inst->Args[0]); break;
 
         case PUSHOFFSETCLOSUREM2: push();
-        case OFFSETCLOSUREM2: offsetClosure(-2); break;
+        case OFFSETCLOSUREM2: makeOffsetClosure(-2); break;
 
         case PUSHOFFSETCLOSURE0:
             push();
@@ -829,7 +853,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         }
 
         case PUSHOFFSETCLOSURE2: push();
-        case OFFSETCLOSURE2: offsetClosure(2); break;
+        case OFFSETCLOSURE2: makeOffsetClosure(2); break;
 
 
         // Object oriented Instructions
@@ -896,6 +920,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             }
             Builder->CreateCondBr(BoolVal, NoBrBlock->LlvmBlocks.front(), BrBlock->LlvmBlocks.front());
             break;
+        }
+        case SWITCH: {
         }
 
 
