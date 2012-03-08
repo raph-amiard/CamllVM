@@ -14,7 +14,7 @@ a.out: Main.o
 	clang++ -o a.out Main.o  `llvm-config --ldflags --libs all`
 
 b.out: Main.o
-	clang++ -o a.out Main.o -L$(VMKIT_A_DIR) -lClasspath -lJ3 -lJ3Compiler -lMvm -lMvmCompiler -lCommonThread -lFinalMMTk -lInlineMMTk -lPrecompiled -lBootstrapClasses `llvm-config --ldflags --libs all`
+	clang++ -o a.out Main.o -L$(VMKIT_A_DIR) -lClasspath -lJ3 -lJ3Compiler -lMvm -lMvmCompiler -lCommonThread -lInlineMMTk -lPrecompiled -lBootstrapClasses `llvm-config --ldflags --libs all`
 
 
 Main.o: Main.cpp
