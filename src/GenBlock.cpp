@@ -99,7 +99,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
                 Ret = PrBlocks.front()->_getStackAt(PrevStackPos);
             } else {
                 auto B = Builder->GetInsertBlock();
-                Builder->SetInsertPoint(LlvmBlock);
+                Builder->SetInsertPoint(LlvmBlocks.front());
                 PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "phi");
                 PHINodes.push_back(make_pair(PHI, PrevStackPos));
                 Builder->SetInsertPoint(B);
