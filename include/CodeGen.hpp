@@ -104,7 +104,7 @@ public:
     void acc(int n);
     void envAcc(int n);
     void push(bool CreatePhi=true);
-    void makeApply(size_t n);
+    void makeApply(size_t n, bool isTerminal=false);
     void makePrimCall(size_t n, int32_t NumPrim);
     void makeClosure(int32_t NbFields, int32_t FnId);
     void makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds);

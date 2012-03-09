@@ -95,10 +95,11 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
 
 value apply(value Closure, value NbArgs, value* Args) {
 
-    int i;
-    //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Code_val(Closure));
-    //for (i=0;i<NbArgs;i++)
-        //printf("ARG %d = %ld\n", i, Args[i]);
+    /*int i;
+    printf("IN APPLYZE, CLOSURE = %p\n", (void*)Code_val(Closure));
+    for (i=0;i<NbArgs;i++)
+        printf("ARG %d = %ld\n", i, Args[i]);
+    */
 
     int ArgsSize = NbArgs;
     value CClosure = Closure;
@@ -191,6 +192,7 @@ value getAtom(value Idx) {
 }
 
 value makeBlock1(value tag, value Val1) {
+    //printf("INTO MAKEBLOCK1\n");
       value block;
       Alloc_small(block, 1, (tag_t)tag);
       Field(block, 0) = Val1;
@@ -198,6 +200,7 @@ value makeBlock1(value tag, value Val1) {
 }
 
 value makeBlock2(value tag, value Val1, value Val2) {
+    //printf("INTO MAKEBLOCK2\n");
       value block;
       Alloc_small(block, 2, (tag_t)tag);
       Field(block, 0) = Val1;
@@ -206,18 +209,20 @@ value makeBlock2(value tag, value Val1, value Val2) {
 }
 
 value makeBlock3(value tag, value Val1, value Val2, value Val3) {
-      value block;
-      Alloc_small(block, 3, (tag_t)tag);
-      Field(block, 0) = Val1;
-      Field(block, 1) = Val2;
-      Field(block, 2) = Val3;
-      return block;
+    //printf("INTO MAKEBLOCK3\n");
+    value block;
+    Alloc_small(block, 3, (tag_t)tag);
+    Field(block, 0) = Val1;
+    Field(block, 1) = Val2;
+    Field(block, 2) = Val3;
+    return block;
 }
 
 value makeBlock(value tag, value NbVals) {
-      value block;
-      Alloc_small(block, NbVals, (tag_t)tag);
-      return block;
+    //printf("INTO MAKEBLOCK N, NbVals = %ld", NbVals);
+    value block;
+    Alloc_small(block, NbVals, (tag_t)tag);
+    return block;
 }
 
 value makeFloatBlock(value Size) {

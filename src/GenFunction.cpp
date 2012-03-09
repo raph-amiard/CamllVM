@@ -45,6 +45,8 @@ Function* GenFunction::CodeGen() {
 
     // Create the llvm Function object
     LlvmFunc = Function::Create(FT, Function::ExternalLinkage, name(), Module->TheModule);
+    if (Id != 0) // is not main function
+        LlvmFunc->setCallingConv(CallingConv::Fast);
 
     // Put the function arguments on the stack of the first block
     size_t i = 0;
@@ -106,6 +108,7 @@ void GenFunction::generateApplierFunction() {
         ));
     }
     auto Ret = Builder->CreateCall(this->LlvmFunc, ArrayRef<Value*>(Args));
+    Ret->setCallingConv(CallingConv::Fast);
     Builder->CreateRet(Ret);
 
     ApplierFunction->getBasicBlockList().push_back(Block1);

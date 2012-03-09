@@ -5,6 +5,7 @@
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/LLVMContext.h"
@@ -33,8 +34,12 @@ GenModule::GenModule() {
         }
     }
     Builder = new IRBuilder<>(getGlobalContext());
+    TargetOptions TargOps;
+    TargOps.GuaranteedTailCallOpt = 1;
     string ErrStr;
-    ExecEngine = EngineBuilder(TheModule).setErrorStr(&ErrStr).create();
+    ExecEngine = EngineBuilder(TheModule).setErrorStr(&ErrStr)
+                                         .setTargetOptions(TargOps)
+                                         .create();
     if (!ExecEngine) {
         cerr << "Could not create ExecutionEngine: " << ErrStr << endl;
         exit(1);

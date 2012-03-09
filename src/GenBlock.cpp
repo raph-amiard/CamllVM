@@ -259,7 +259,7 @@ void GenBlock::makeCheckedCall(Value* Callee, ArrayRef<Value*> Args) {
     //}
 }
 
-void GenBlock::makeApply(size_t n) {
+void GenBlock::makeApply(size_t n, bool isTerminal) {
 
     auto Ci = Function->ClosuresFunctions.find(getAccu());
     vector<Value*> ArgsV;
@@ -268,12 +268,25 @@ void GenBlock::makeApply(size_t n) {
     if (Ci != Function->ClosuresFunctions.end() 
             && Ci->second.LlvmFunc->arg_size() == n) {
 
-        auto TmpEnv = Builder->CreateCall(getFunction("getEnv"), "SavedEnv");
-        Builder->CreateCall(getFunction("setEnv"), getAccu());
+        auto FuncToCall = Ci->second.LlvmFunc;
+        bool SameFunc = FuncToCall != this->Function->LlvmFunc;
+        Value* TmpEnv;
+
+        if (SameFunc) {
+            TmpEnv = Builder->CreateCall(getFunction("getEnv"), "SavedEnv");
+            Builder->CreateCall(getFunction("setEnv"), getAccu());
+        }
+
         for (size_t i = 1; i <= n; i++)
             ArgsV.push_back(getStackAt(n-i));
-        makeCheckedCall(Ci->second.LlvmFunc, ArgsV);
-        Builder->CreateCall(getFunction("setEnv"), TmpEnv);
+
+        auto Call = Builder->CreateCall(FuncToCall, ArgsV);
+        Call->setCallingConv(CallingConv::Fast);
+        if (isTerminal) Call->setTailCall();
+        Accu = Call;
+
+        if (SameFunc)
+            Builder->CreateCall(getFunction("setEnv"), TmpEnv);
 
     } else {
 
@@ -887,10 +900,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case APPLY2: makeApply(2); break;
         case APPLY3: makeApply(3); break;
         case APPLY:  makeApply(Inst->Args[0]); break;
-        case APPTERM1: makeApply(1); Builder->CreateRet(getAccu()); break;
-        case APPTERM2: makeApply(2); Builder->CreateRet(getAccu()); break;
-        case APPTERM3: makeApply(3); Builder->CreateRet(getAccu()); break;
-        case APPTERM: makeApply(Inst->Args[0]); Builder->CreateRet(getAccu()); break;
+        case APPTERM1: makeApply(1, true); Builder->CreateRet(getAccu()); break;
+        case APPTERM2: makeApply(2, true); Builder->CreateRet(getAccu()); break;
+        case APPTERM3: makeApply(3, true); Builder->CreateRet(getAccu()); break;
+        case APPTERM: makeApply(Inst->Args[0], true); Builder->CreateRet(getAccu()); break;
 
                       // Fall through return
         case STOP:
