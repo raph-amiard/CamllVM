@@ -102,7 +102,7 @@ void GenFunction::generateApplierFunction() {
         Args.push_back(Builder->CreateCall2(
             Module->TheModule->getFunction("getField"),
             Closure,
-            Builder->CreateSub(BlockSize, ConstInt(1 + Arity - i))
+            Builder->CreateSub(BlockSize, ConstInt(2 + Arity - i))
         ));
     }
     auto Ret = Builder->CreateCall(this->LlvmFunc, ArrayRef<Value*>(Args));

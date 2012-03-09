@@ -150,7 +150,7 @@ void GenBlock::handlePHINodes() {
 
 void GenBlock::dumpStack() {
     cout << "============== Stack For Block " << name() << " ==================" << endl;
-    for (auto Val : Stack) printf("%p\n", Val);
+    //for (auto Val : Stack) printf("%p\n", Val);
     for (auto Val : Stack) Val->Val->dump();
     cout << "==========================================================" << endl;
 }
@@ -261,14 +261,19 @@ void GenBlock::makeCheckedCall(Value* Callee, ArrayRef<Value*> Args) {
 
 void GenBlock::makeApply(size_t n) {
 
-    ClosureInfo CI = Function->ClosuresFunctions[getAccu()];
+    auto Ci = Function->ClosuresFunctions.find(getAccu());
     vector<Value*> ArgsV;
 
-    if (CI.IsBare && CI.LlvmFunc->arg_size() == n) {
 
+    if (Ci != Function->ClosuresFunctions.end() 
+            && Ci->second.LlvmFunc->arg_size() == n) {
+
+        auto TmpEnv = Builder->CreateCall(getFunction("getEnv"), "SavedEnv");
+        Builder->CreateCall(getFunction("setEnv"), getAccu());
         for (size_t i = 1; i <= n; i++)
             ArgsV.push_back(getStackAt(n-i));
-        makeCheckedCall(CI.LlvmFunc, ArgsV);
+        makeCheckedCall(Ci->second.LlvmFunc, ArgsV);
+        Builder->CreateCall(getFunction("setEnv"), TmpEnv);
 
     } else {
 
@@ -360,7 +365,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
 
     vector<GenFunction*> DestGenFuncs;
     vector<llvm::Value*> CastPtrs;
-    int32_t AllNbArgs;
+    int32_t AllNbArgs = 0;
 
 
     // Create pointer to all dest functions
@@ -385,12 +390,13 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
      * ------------------------------------------------------------------------------------------------------------
      * Example with 3 functions, fn1(a), fn2(a, b), fn3(a,b)
      *
-     *                     <--------fn3 closure size : 7 ----------->                                      
-     * ----------------------------------------------------------------------------------------------------
-     * |fn1|HdFn2|fn2|hdfn3|fn3|Fld1|Fld2|Fld3|fn3a1|fn3a2|fn3nbargs|fn2a1|fn2a2|fn2nbargs|fn1a1|fn1nbargs|
-     * ----------------------------------------------------------------------------------------------------
-     *           <------------------------------fn2 closure size : 12 -------------------->                
-     * <----------------------------------------Main closure size : 16 ----------------------------------->
+     *                     <--------fn3 closure size : 8 ------------------------->                                      
+     * --------------------------------------------------------------------------------------------------------------------------------------------
+     * |fn1|HdFn2|fn2|hdfn3|fn3|Fld1|Fld2|Fld3|fn3a1|fn3a2|fn3nbremargs|fn3nbtargs|fn2a1|fn2a2|fn2nbremargs|fn2nbargs|fn1a1|fn1nbremargs|fn1nbargs|
+     * --------------------------------------------------------------------------------------------------------------------------------------------
+     *           <------------------------------fn2 closure size : 14 -----------------------------------------------> 
+     * <----------------------------------------Main closure size : 19 --------------------------------------------------------------------------->
+     *  fn1|hdfn2|fn2|fn2a1|fn2nbargs|fn2nbtargs|fn1a1|fn1nbargs|fn1nbtargs|
      */
     
     // Get the main closure function number of args
@@ -401,9 +407,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     //          - The main nb args
     //          - The main args slots
     //  That are given separately to the makeClosure function
-    size_t NbReqFields = (NbFuncs-1)*2 + NbFields + AllNbArgs;
-    cout << "NBFIELDS : " << NbFields;
-    cout << "NBREQFIELDS : " << NbReqFields << endl;
+    size_t NbReqFields = (NbFuncs-1)*4 + NbFields + AllNbArgs;
     auto Closure = Builder->CreateCall3(MakeClos, 
                                         ConstInt(NbReqFields),
                                         CastPtrs[0], 
@@ -413,12 +417,20 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     // If there are fields, push the Accu on the stack
     if (NbFields > 0) push();
 
+    // Set Closure fields
+    auto FieldOffset = 1 + (2 * (NbFuncs-1));
+    for (int i = 0; i < NbFields; i++) {
+        auto FieldVal = stackPop();
+        Builder->CreateCall3(getFunction("setField"), Closure, ConstInt(i+FieldOffset), FieldVal);
+    }
+
     // Set Closure's nested closures
-    
     // Offset where the current offset closure starts relatively to the first
     int32_t NestClosOfs = 2;
     // Nested closure relative size
-    size_t NClosSize = (NbReqFields + 2 + FuncNbArgs) - NestClosOfs - FuncNbArgs - 1;
+    size_t NClosSize = (NbReqFields + 3 + FuncNbArgs) - NestClosOfs - FuncNbArgs - 2;
+
+    Accu = Closure; push();
 
     for (int i = 1; i < NbFuncs; i++) {
         auto ArgSize = DestGenFuncs[i]->LlvmFunc->arg_size();
@@ -427,22 +439,14 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
         // ClosureSetNext(MainClosure, NestedClosureOffset,
         //                NestedClosureSize, NestedFunctionPtr,
         //                NestedClosureNbArgs)
-        Builder->CreateCall5(ClosSetNest,
-                             Closure,
-                             ConstInt(NestClosOfs),
-                             ConstInt(NClosSize),
-                             CastPtrs[i],
-                             ConstInt(ArgSize));
-
+        Accu = Builder->CreateCall5(ClosSetNest, Closure,
+                                    ConstInt(NestClosOfs),
+                                    ConstInt(NClosSize),
+                                    CastPtrs[i],
+                                    ConstInt(ArgSize));
+        push();
         NestClosOfs += 2;
         NClosSize -= 2 + ArgSize;
-    }
-
-    // Set Closure fields
-    auto FieldOffset = 1 + (2 * (NbFuncs-1));
-    for (int i = 0; i < NbFields; i++) {
-        auto FieldVal = stackPop();
-        Builder->CreateCall3(getFunction("setField"), Closure, ConstInt(i+FieldOffset), FieldVal);
     }
 
     Accu = Closure;
@@ -827,7 +831,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 push();
             } else {
                 makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
-                push();
                 // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;

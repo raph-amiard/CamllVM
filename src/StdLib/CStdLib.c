@@ -55,16 +55,17 @@ void debug(value Arg) {
 // It is compatible with the regular ocaml runtime's closure layout 
 
 value makeClosure(value NVars, value FPtr, value NbArgs) {
-    printf("IN MAKE CLOSURE, NVars = %ld, FPtr = %p, NbArgs = %ld\n",NVars, (void*)FPtr, NbArgs);
+    //printf("IN MAKE CLOSURE, NVars = %ld, FPtr = %p, NbArgs = %ld\n",NVars, (void*)FPtr, NbArgs);
     value Closure;
-    int BlockSize = 2 + NVars + NbArgs;
+    int BlockSize = 3 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
     // Set the code pointer
     Code_val(Closure) = (code_t)FPtr;
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
-    printf("CLOSURE ADDR: %p\n", (void*)Closure);
-    printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
+    Field(Closure, BlockSize - 2) = NbArgs;
+    //printf("CLOSURE ADDR: %p\n", (void*)Closure);
+    //printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
     return Closure;
 }
 
@@ -76,11 +77,15 @@ value shiftClosure(value Shift) {
 // ClosureSetNext(MainClosure, NestedClosureOffset,
 //                NestedClosureSize, NestedFunctionPtr,
 //                NestedClosureNbArgs)
-void closureSetNestedClos(value Closure, value NClOffset, value NClSize,
+value closureSetNestedClos(value Closure, value NClOffset, value NClSize,
                           value FPtr,    value NbArgs) {
-    Field(Closure, NClOffset-1) = Make_header(NClSize, Infix_tag, Caml_white);
-    Field(Closure, NClOffset) = FPtr;
-    Field(Closure, NClSize-1) = NbArgs;
+    Field(Closure, NClOffset - 1) = Make_header(NClSize, Infix_tag, Caml_white);
+    value NestedClos = Closure+NClOffset*sizeof(value);
+    Code_val(NestedClos) = (code_t)FPtr;
+    // Set NbRemArgs and NbTotalArgs
+    Field(NestedClos, NClSize - 1) = NbArgs;
+    Field(NestedClos, NClSize - 2) = NbArgs;
+    return NestedClos;
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {
@@ -90,8 +95,10 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
 
 value apply(value Closure, value NbArgs, value* Args) {
 
-    //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Closure);
-    //printf("ARG 1 = %p\n", Args[0]);
+    int i;
+    //printf("IN APPLYZE, CLOSURE = %p\n", (void*)Code_val(Closure));
+    //for (i=0;i<NbArgs;i++)
+        //printf("ARG %d = %ld\n", i, Args[i]);
 
     int ArgsSize = NbArgs;
     value CClosure = Closure;
@@ -102,12 +109,14 @@ value apply(value Closure, value NbArgs, value* Args) {
         // Get the number of args the current closure needs
         int Size = Wosize_val(CClosure);
         //printf("SIZE = %d\n", Size);
-        int NbRemArgs = Field(CClosure, (Size - 1));
+        int NbRemArgs = Field(CClosure, (Size - 2));
+        int NbTotalArgs = Field(CClosure, (Size - 1));
+        //printf("NB REM ARGS : %d, NB TOTAL ARGS : %d\n", NbRemArgs, NbTotalArgs);
 
         // Fill the closure with args until it's full 
         // or we don't have any args left
         while (NbRemArgs > 0 && NbArgs > 0) {
-            Field(CClosure, (Size - 1 - NbRemArgs)) = 
+            Field(CClosure, (Size - 2 - NbRemArgs)) = 
                 (value)Args[ArgsSize - NbArgs];
             NbRemArgs--; NbArgs--;
         }
@@ -115,11 +124,12 @@ value apply(value Closure, value NbArgs, value* Args) {
         // If the closure is not full
         // and we don't have any args left, return the closure
         if (NbRemArgs > 0) {
-            Field(CClosure, (Size - 1)) = NbRemArgs;
+            Field(CClosure, (Size - 2)) = NbRemArgs;
             return CClosure;
         }
 
         // If the closure is full, apply it
+        Field(CClosure, (Size - 2)) = NbTotalArgs;
         value (*FPtr)(value) = (value(*)(value)) Code_val(CClosure);
         value OldEnv = Env;
         Env = CClosure;
