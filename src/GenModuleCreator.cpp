@@ -96,6 +96,10 @@ deque<ZInstruction*>* GenModuleCreator::initFunction(deque<ZInstruction*>* Instr
         if (Inst->isJumpInst() || Inst->OpNum == PUSHTRAP) 
             MaxInstIdx = max(MaxInstIdx, Inst->getDestIdx());
 
+        if (Inst->isSwitch()) {
+            MaxInstIdx = max(MaxInstIdx, Inst->SwitchEntries.back());
+        }
+
         // If the instruction is a return instruction
         // And there is no jump to an instruction after this one
         // We have reached the end of the function
@@ -135,7 +139,9 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
             // Make the block connections if necessary
             if (CBlock) {
                 ZInstruction* LastInst = CBlock->Instructions.back();
-                if (!(LastInst->isUncondJump() || LastInst->isReturn())) {
+                if (!(LastInst->isUncondJump() 
+                      || LastInst->isReturn()
+                      || LastInst->isSwitch())) {
                     CBlock->setNext(Function->Blocks[Inst->idx], false);
                 }
             }
@@ -150,8 +156,9 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
             CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
 
         if (Inst->isSwitch()) {
-            for (auto Dest : Inst->SwitchEntries)
+            for (auto Dest : Inst->SwitchEntries) {
                 CBlock->setNext(Function->Blocks[Dest], false);
+            }
         }
     }
 

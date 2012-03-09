@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdexcept>
 #include <cstdio>
+#include <algorithm>
 
 /* GC interface 
  * Those macros are empty for the moment 
@@ -61,6 +62,10 @@ pair<BasicBlock*, BasicBlock*> GenBlock::addBlock() {
 }
 
 void GenBlock::setNext(GenBlock* Block, bool IsBrBlock) {
+
+    for (auto Bl : NextBlocks)
+        if (Bl == Block) return;
+
     NextBlocks.push_back(Block);
     Block->PreviousBlocks.push_front(this);
     if (IsBrBlock) BrBlock = Block;
@@ -214,7 +219,7 @@ void GenBlock::genTermInst() {
     Builder->SetInsertPoint(LlvmBlock);
     auto Inst = Instructions.back();
 
-    if (!(Inst->isJumpInst() || Inst->isReturn()))
+    if (!(Inst->isJumpInst() || Inst->isReturn() || Inst->isSwitch()))
         Builder->CreateBr(this->NextBlocks.front()->LlvmBlock);
 }
 
@@ -240,7 +245,7 @@ Value* GenBlock::valInt(Value* From) {
     return Builder->CreateAdd(Builder->CreateShl(From, 1), ConstInt(1));
 }
 
-Value* ConstInt(uint64_t val) {
+ConstantInt* ConstInt(uint64_t val) {
     return ConstantInt::get(
         getGlobalContext(), 
         APInt(sizeof(value)*8, val, /*signed=*/true)
@@ -905,7 +910,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case APPTERM3: makeApply(3, true); Builder->CreateRet(getAccu()); break;
         case APPTERM: makeApply(Inst->Args[0], true); Builder->CreateRet(getAccu()); break;
 
-                      // Fall through return
+        // Fall through return
         case STOP:
         case RETURN: {
             auto RetVal = getAccu();
@@ -938,6 +943,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
         case SWITCH: {
+            auto SwitchVal = Builder->CreateCall2(getFunction("getSwitchOffset"),
+                                                  ConstInt(Inst->Args[0]),
+                                                  Accu);
+            auto Switch = Builder->CreateSwitch(SwitchVal, Function->Blocks[Inst->SwitchEntries[0]]->LlvmBlock);
+            for (size_t i = 0; i < Inst->SwitchEntries.size(); i++)
+                Switch->addCase(ConstInt(i), Function->Blocks[Inst->SwitchEntries[i]]->LlvmBlock);
+
+            break;
         }
 
 

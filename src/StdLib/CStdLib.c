@@ -95,12 +95,6 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
 
 value apply(value Closure, value NbArgs, value* Args) {
 
-    /*int i;
-    printf("IN APPLYZE, CLOSURE = %p\n", (void*)Code_val(Closure));
-    for (i=0;i<NbArgs;i++)
-        printf("ARG %d = %ld\n", i, Args[i]);
-    */
-
     int ArgsSize = NbArgs;
     value CClosure = Closure;
 
@@ -413,4 +407,14 @@ value getDynMethod(value Object, value Tag) {
         else Li = Mi;
       }
       return Field (Methods, Li-1);
+}
+
+value getSwitchOffset(value SwitchArg, value Dispatch) {
+    if (Is_block(Dispatch)) {
+        int index = Tag_val(Dispatch);
+        return (SwitchArg & 0xFFFF) + index;
+    } else {
+        int index = Long_val(Dispatch);
+        return index;
+    }
 }

@@ -128,7 +128,7 @@ public:
 
 };
 
-llvm::Value* ConstInt(uint64_t val);
+llvm::ConstantInt* ConstInt(uint64_t val);
 
 
 // ================ GenFunction Declaration ================== //
