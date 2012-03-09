@@ -418,3 +418,7 @@ value getSwitchOffset(value SwitchArg, value Dispatch) {
         return index;
     }
 }
+
+void offsetRef(value Ref, value Offset) {
+      Field(Ref, 0) += Offset << 1;
+}

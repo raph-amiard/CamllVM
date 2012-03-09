@@ -72,8 +72,14 @@ Function* GenFunction::CodeGen() {
     // TODO : This might not be enough. So far i've determined ZAM bytecode 
     // only branches forward for all branches that are not loops
     // But if this is not always the case, then there is a bug here
-    for (auto BIt = Blocks.rbegin(); BIt != Blocks.rend(); ++BIt) {
-        BIt->second->handlePHINodes();
+    bool StillHasPhiNodes = true;
+    while (StillHasPhiNodes) {
+        for (auto BIt = Blocks.rbegin(); BIt != Blocks.rend(); ++BIt)
+            BIt->second->handlePHINodes();
+
+        StillHasPhiNodes = false;
+        for (auto BIt = Blocks.rbegin(); BIt != Blocks.rend(); ++BIt) 
+            if (BIt->second->PHINodes.size()) StillHasPhiNodes = true;
     }
 
     // Generate Applier
@@ -81,6 +87,7 @@ Function* GenFunction::CodeGen() {
         this->generateApplierFunction();
 
     // Verify if the function is well formed
+    DEBUG(LlvmFunc->dump();)
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;

@@ -16,7 +16,6 @@ extern "C" {
 
 #include <stdexcept>
 #include <cstdio>
-#include <algorithm>
 
 /* GC interface 
  * Those macros are empty for the moment 
@@ -63,8 +62,10 @@ pair<BasicBlock*, BasicBlock*> GenBlock::addBlock() {
 
 void GenBlock::setNext(GenBlock* Block, bool IsBrBlock) {
 
+    /*
     for (auto Bl : NextBlocks)
         if (Bl == Block) return;
+        */
 
     NextBlocks.push_back(Block);
     Block->PreviousBlocks.push_front(this);
@@ -89,6 +90,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
 
     StackValue* Ret = nullptr;
 
+    DEBUG(cout << "STACK ACCESS IN BLOCK " << Id << " WITH N = " << n << " AND STACK SIZE = " << Stack.size() << endl;)
     if (n >= Stack.size()) {
         auto NbPrevBlocks = PrBlocks.size();
         int PrevStackPos = n - Stack.size() + StackOffset;
@@ -99,6 +101,9 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
         } else {
 
             if (NbPrevBlocks == 0) {
+                dumpStack();
+                Function->LlvmFunc->dump();
+                cout << "BAD STACK ACCESS IN BLOCK " << Id << " WITH N = " << n << " AND STACK SIZE = " << Stack.size() << endl;
                 throw std::logic_error("Bad stack access !");
             } else if (NbPrevBlocks == 1) {
                 Ret = PrBlocks.front()->_getStackAt(PrevStackPos);
@@ -131,16 +136,28 @@ StackValue* GenBlock::getMutatedValue(StackValue* Val) {
 }
 
 void GenBlock::handlePHINodes() {
+    DEBUG(cout << "IN HANDLEPHI NODES FOR BLOCK " << this->Id << "\n";)
     for (auto Pair : PHINodes) 
         for (auto Block : PreviousBlocks) {
-            if (Pair.second == -1)
-                Pair.first->addIncoming(Block->Accu, Block->LlvmBlocks.front());
-            else
+            if (Pair.second == -1) {
+                auto Val = Block->Accu;
+                if (Val->getType() != getValType())
+                    Val = Builder->CreateIntCast(Val, getValType(), true);
+                Pair.first->addIncoming(Val, Block->LlvmBlocks.front());
+            } else {
                 // We take the corresponding value in the stack of the previous block
                 // And link it in the phi to the last llvm block of the previous block
                 // Because we are necessarily coming from there if we come from this block
-                Pair.first->addIncoming(Block->getStackAt(Pair.second, this), Block->LlvmBlocks.back());
+                auto Val = Block->getStackAt(Pair.second, this);
+                if (Val->getType() != getValType()) {
+                    Val = Builder->CreateIntCast(Val, getValType(), true);
+                }
+                Pair.first->addIncoming(Val, Block->LlvmBlocks.back());
+            }
         }
+
+    // Remove all phi nodes we handled
+    while (PHINodes.size()) PHINodes.pop_front();
 
     auto& IList = LlvmBlocks.front()->getInstList();
     deque<decltype(IList.begin())> Phis;
@@ -480,6 +497,7 @@ void GenBlock::makeOffsetClosure(int32_t n) {
 
 void GenBlock::makeSetField(size_t n) {
     Builder->CreateCall3(getFunction("setField"), getAccu(), ConstInt(n), stackPop());
+    Accu = ConstInt(Val_unit);
 }
 
 void GenBlock::makeGetField(size_t n) {
@@ -683,6 +701,11 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Accu = Builder->CreateAnd(getAccu(), ConstInt(1));
             break;
 
+        case OFFSETREF:
+            Builder->CreateCall2(getFunction("offsetRef"), Accu, ConstInt(Inst->Args[0]));
+            Accu = ConstInt(Val_unit);
+            break;
+
 
         case GEINT:
             TmpVal = stackPop();
@@ -711,9 +734,10 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case NEQ:
             Accu = Builder->CreateICmpNE(getAccu(), stackPop());
             break;
-        case EQ:
-            Accu = Builder->CreateICmpEQ(getAccu(), stackPop());
+        case EQ: {
+            Accu =  Builder->CreateICmpEQ(getAccu(), stackPop());
             break;
+        }
 
         case ASSIGN:
             MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue(getAccu());
@@ -946,7 +970,9 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             auto SwitchVal = Builder->CreateCall2(getFunction("getSwitchOffset"),
                                                   ConstInt(Inst->Args[0]),
                                                   Accu);
-            auto Switch = Builder->CreateSwitch(SwitchVal, Function->Blocks[Inst->SwitchEntries[0]]->LlvmBlock);
+            auto DefaultBlock = Function->Blocks[Inst->SwitchEntries[0]];
+            this->setNext(DefaultBlock, false);
+            auto Switch = Builder->CreateSwitch(SwitchVal, DefaultBlock->LlvmBlock);
             for (size_t i = 0; i < Inst->SwitchEntries.size(); i++)
                 Switch->addCase(ConstInt(i), Function->Blocks[Inst->SwitchEntries[i]]->LlvmBlock);
 
