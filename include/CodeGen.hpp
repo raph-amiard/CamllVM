@@ -112,10 +112,11 @@ public:
     void makeSetField(size_t n);
     void makeGetField(size_t n);
     void debug(llvm::Value* DbgVal);
+    void makeBoolToIntCast();
 
     size_t StackOffset;
-    StackValue* _getStackAt(size_t n, GenBlock* IgnorePrevBlock=nullptr);
-    llvm::Value* getStackAt(size_t n, GenBlock* IgnorePrevBlock=nullptr);
+    StackValue* _getStackAt(size_t n, GenBlock* StartBlock=nullptr);
+    llvm::Value* getStackAt(size_t n);
     llvm::Value* stackPop();
 
     llvm::Value* intVal(llvm::Value* From);
@@ -148,6 +149,8 @@ private:
 
     // Map closures to llvm Functions to keep track of signatures
     std::map<llvm::Value*, ClosureInfo> ClosuresFunctions;
+
+    std::map<llvm::Value*, llvm::Value*> BoolsAsVals;
 
     void generateApplierFunction();
 

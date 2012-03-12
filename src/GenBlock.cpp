@@ -79,18 +79,20 @@ std::string GenBlock::name() {
     return ss.str();
 }
 
-Value* GenBlock::getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
-    return _getStackAt(n, IgnorePrevBlock)->Val;
+Value* GenBlock::getStackAt(size_t n) {
+    return _getStackAt(n, nullptr)->Val;
 }
 
-StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
+StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
 
     std::list<GenBlock*> PrBlocks = PreviousBlocks;
-    if (IgnorePrevBlock != nullptr) PrBlocks.remove(IgnorePrevBlock);
+
+    if (StartBlock == nullptr) StartBlock = this;
+    else PrBlocks.remove(StartBlock);
 
     StackValue* Ret = nullptr;
 
-    DEBUG(cout << "STACK ACCESS IN BLOCK " << Id << " WITH N = " << n << " AND STACK SIZE = " << Stack.size() << endl;)
+    //DEBUG(cout << "STACK ACCESS IN BLOCK " << Id << " WITH N = " << n << " AND STACK SIZE = " << Stack.size() << endl;)
     if (n >= Stack.size()) {
         auto NbPrevBlocks = PrBlocks.size();
         int PrevStackPos = n - Stack.size() + StackOffset;
@@ -106,7 +108,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* IgnorePrevBlock) {
                 cout << "BAD STACK ACCESS IN BLOCK " << Id << " WITH N = " << n << " AND STACK SIZE = " << Stack.size() << endl;
                 throw std::logic_error("Bad stack access !");
             } else if (NbPrevBlocks == 1) {
-                Ret = PrBlocks.front()->_getStackAt(PrevStackPos);
+                Ret = PrBlocks.front()->_getStackAt(PrevStackPos, StartBlock);
             } else {
                 auto B = Builder->GetInsertBlock();
                 Builder->SetInsertPoint(LlvmBlocks.front());
@@ -136,25 +138,27 @@ StackValue* GenBlock::getMutatedValue(StackValue* Val) {
 }
 
 void GenBlock::handlePHINodes() {
-    DEBUG(cout << "IN HANDLEPHI NODES FOR BLOCK " << this->Id << "\n";)
-    for (auto Pair : PHINodes) 
+    //DEBUG(cout << "IN HANDLEPHI NODES FOR BLOCK " << this->Id << "\n";)
+    for (auto Pair : PHINodes)  {
+        auto PhiNode = Pair.first;
         for (auto Block : PreviousBlocks) {
             if (Pair.second == -1) {
-                auto Val = Block->Accu;
-                if (Val->getType() != getValType())
-                    Val = Builder->CreateIntCast(Val, getValType(), true);
-                Pair.first->addIncoming(Val, Block->LlvmBlocks.front());
+                auto Val = Block->getAccu();
+                if (Val->getType() != getValType()) 
+                    Val = Function->BoolsAsVals[Val];
+                PhiNode->addIncoming(Val, Block->LlvmBlocks.front());
             } else {
                 // We take the corresponding value in the stack of the previous block
                 // And link it in the phi to the last llvm block of the previous block
                 // Because we are necessarily coming from there if we come from this block
-                auto Val = Block->getStackAt(Pair.second, this);
-                if (Val->getType() != getValType()) {
-                    Val = Builder->CreateIntCast(Val, getValType(), true);
-                }
-                Pair.first->addIncoming(Val, Block->LlvmBlocks.back());
+                auto Val = Block->getStackAt(Pair.second);
+                if (Val->getType() != getValType()) 
+                    Val = Function->BoolsAsVals[Val];
+                PhiNode->addIncoming(Val, Block->LlvmBlocks.back());
             }
         }
+    }
+
 
     // Remove all phi nodes we handled
     while (PHINodes.size()) PHINodes.pop_front();
@@ -190,6 +194,7 @@ Value* GenBlock::stackPop() {
 Value* GenBlock::getAccu(bool CreatePhi) {
     if (Accu == nullptr) {
         if (PreviousBlocks.size() > 1 && CreatePhi) {
+            Builder->SetInsertPoint(this->LlvmBlock);
             auto PHI = Builder->CreatePHI(getValType(), PreviousBlocks.size());
             // TODO: This is hackish
             // Using -1 to distinguish this Phi node from the other and treat it right in handle phi nodes
@@ -504,6 +509,11 @@ void GenBlock::makeGetField(size_t n) {
     Accu = Builder->CreateCall2(getFunction("getField"), getAccu(), ConstInt(n));
 }
 
+void GenBlock::makeBoolToIntCast() {
+    auto AsVal = Builder->CreateIntCast(Accu, getValType(), true);
+    Function->BoolsAsVals[Accu] = AsVal;
+}
+
 void GenBlock::debug(Value* DbgVal) {
     if (DbgVal->getType() != getValType()) {
         DbgVal = Builder->CreateIntCast(DbgVal, getValType(), true);
@@ -710,32 +720,40 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case GEINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSGE(getAccu(), TmpVal);
+            makeBoolToIntCast();
             break;
         case LTINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSLT(getAccu(), TmpVal);
+            makeBoolToIntCast();
             break;
         case LEINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSLE(getAccu(), TmpVal);
+            makeBoolToIntCast();
             break;
         case ULTINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpULT(getAccu(), TmpVal);
+            makeBoolToIntCast();
             break;
         case UGEINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpUGE(getAccu(), TmpVal);
+            makeBoolToIntCast();
             break;            
         case GTINT:
             TmpVal = stackPop();
             Accu = Builder->CreateICmpSGT(getAccu(), TmpVal);
+            makeBoolToIntCast();
             break;
         case NEQ:
             Accu = Builder->CreateICmpNE(getAccu(), stackPop());
+            makeBoolToIntCast();
             break;
         case EQ: {
             Accu =  Builder->CreateICmpEQ(getAccu(), stackPop());
+            makeBoolToIntCast();
             break;
         }
 
@@ -1024,7 +1042,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     }
 
-    DEBUG(cout << "Stack DIFF : " << StackSize - Stack.size() << endl;)
+    //DEBUG(cout << "Stack DIFF : " << StackSize - Stack.size() << endl;)
     DEBUG(cout << "Instruction generated ===  \n";)
 }
 

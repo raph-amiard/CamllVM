@@ -69,9 +69,6 @@ Function* GenFunction::CodeGen() {
 
     // Handle phi nodes in reverse order, so that if phi are generated 
     // in previous blocks they will be handled
-    // TODO : This might not be enough. So far i've determined ZAM bytecode 
-    // only branches forward for all branches that are not loops
-    // But if this is not always the case, then there is a bug here
     bool StillHasPhiNodes = true;
     while (StillHasPhiNodes) {
         for (auto BIt = Blocks.rbegin(); BIt != Blocks.rend(); ++BIt)
@@ -87,7 +84,7 @@ Function* GenFunction::CodeGen() {
         this->generateApplierFunction();
 
     // Verify if the function is well formed
-    DEBUG(LlvmFunc->dump();)
+    //DEBUG(LlvmFunc->dump();)
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;
