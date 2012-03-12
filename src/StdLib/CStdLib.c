@@ -7,6 +7,11 @@
 
 #define Lookup(obj, lab) Field (Field (obj, 0), Int_val(lab))
 
+#define DEBUG 1
+
+#define DBG(inst) { inst }
+
+
 /* GC interface */
 
 #define Setup_for_gc \
@@ -93,13 +98,23 @@ void closureSetVar(value Closure, value VarIdx, value Value) {
     Field(Closure, VarIdx + 1) = Value;
 }
 
+int ExtraArgs = 0;
+
 value apply(value Closure, value NbArgs, value* Args) {
 
+#if 0
+    printf("IN aPPLY, closure = %p\n", (void*)Closure);
+    int i;
+    for (i = 0; i < NbArgs; i++)
+        printf("ARG %d: %p\n", i, (void*)Args[i]);
+    printf("\n");
+#endif
     int ArgsSize = NbArgs;
     value CClosure = Closure;
 
     // While we still have arg to apply 
     while (NbArgs > 0) {
+        //printf("IN aPPLY, closure = %p, one more loop\n", (void*)Closure);
 
         // Get the number of args the current closure needs
         int Size = Wosize_val(CClosure);
@@ -111,8 +126,8 @@ value apply(value Closure, value NbArgs, value* Args) {
         // Fill the closure with args until it's full 
         // or we don't have any args left
         while (NbRemArgs > 0 && NbArgs > 0) {
-            Field(CClosure, (Size - 2 - NbRemArgs)) = 
-                (value)Args[ArgsSize - NbArgs];
+            Field(CClosure, (Size - 3 - NbTotalArgs + NbRemArgs)) = 
+                (value)Args[NbArgs-1];
             NbRemArgs--; NbArgs--;
         }
 
@@ -124,12 +139,20 @@ value apply(value Closure, value NbArgs, value* Args) {
         }
 
         // If the closure is full, apply it
+        
+        // Reinit the closure remaining args
         Field(CClosure, (Size - 2)) = NbTotalArgs;
+
+        // Add the extra arguments if any
+        ExtraArgs += NbArgs;
+
         value (*FPtr)(value) = (value(*)(value)) Code_val(CClosure);
         value OldEnv = Env;
         Env = CClosure;
         CClosure = FPtr(CClosure);
         Env = OldEnv;
+
+        ExtraArgs -= NbArgs;
 
         // If NbArgs = 0, 
         // we get out of the loop and return the application result
