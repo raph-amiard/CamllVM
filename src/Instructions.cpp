@@ -8,6 +8,7 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
     int i = 0;
     uint32_t Pos = 0;
     map <int, ZInstruction*> InstPositions;
+    int32_t* TabInstB = TabInst;
 
     // Size in words
     Size /= 4;
@@ -17,6 +18,7 @@ void readInstructions(vector<ZInstruction*>& Instructions, int32_t* TabInst, uin
         // Read instruction
         // And then fill arguments values
         ZInstruction* Inst = new ZInstruction();
+        Inst->OrigIdx = (int32_t)(TabInst - TabInstB);
         Inst->OpNum = toBigEndian(*TabInst++);
         Pos++;
         InstPositions[Pos] = Inst;

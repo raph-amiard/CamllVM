@@ -233,6 +233,7 @@ public:
     uint32_t OpNum;
     int32_t Args[4];
     int32_t idx;
+    int32_t OrigIdx;
     int32_t ClosureRecFns[32];
     std::vector<int32_t> SwitchEntries;
     uint32_t Annotation;
