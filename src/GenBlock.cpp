@@ -112,7 +112,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
             } else {
                 auto B = Builder->GetInsertBlock();
                 Builder->SetInsertPoint(LlvmBlocks.front());
-                PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "phi");
+                PHINode* PHI = Builder->CreatePHI(getValType(), NbPrevBlocks, "StackPhi");
                 PHINodes.push_back(make_pair(PHI, PrevStackPos));
                 Builder->SetInsertPoint(B);
                 Ret = new StackValue(PHI);
@@ -131,6 +131,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
 
 StackValue* GenBlock::getMutatedValue(StackValue* Val) {
     auto It = MutatedVals.find(Val);
+
     if (It != MutatedVals.end())
         return getMutatedValue(It->second);
 
@@ -138,24 +139,23 @@ StackValue* GenBlock::getMutatedValue(StackValue* Val) {
 }
 
 void GenBlock::handlePHINodes() {
-    //DEBUG(cout << "IN HANDLEPHI NODES FOR BLOCK " << this->Id << "\n";)
+
     for (auto Pair : PHINodes)  {
         auto PhiNode = Pair.first;
         for (auto Block : PreviousBlocks) {
-            if (Pair.second == -1) {
-                auto Val = Block->getAccu();
-                if (Val->getType() != getValType()) 
-                    Val = Function->BoolsAsVals[Val];
-                PhiNode->addIncoming(Val, Block->LlvmBlocks.front());
-            } else {
+            Value* Val;
+            if (Pair.second == -1)
+                Val = Block->getAccu();
+            else
                 // We take the corresponding value in the stack of the previous block
                 // And link it in the phi to the last llvm block of the previous block
                 // Because we are necessarily coming from there if we come from this block
-                auto Val = Block->getStackAt(Pair.second);
-                if (Val->getType() != getValType()) 
-                    Val = Function->BoolsAsVals[Val];
-                PhiNode->addIncoming(Val, Block->LlvmBlocks.back());
-            }
+                Val = Block->getStackAt(Pair.second);
+            
+            if (Val->getType() != getValType()) 
+                Val = Function->BoolsAsVals[Val];
+
+            PhiNode->addIncoming(Val, Block->LlvmBlocks.back());
         }
     }
 
@@ -195,7 +195,7 @@ Value* GenBlock::getAccu(bool CreatePhi) {
     if (Accu == nullptr) {
         if (PreviousBlocks.size() > 1 && CreatePhi) {
             Builder->SetInsertPoint(this->LlvmBlock);
-            auto PHI = Builder->CreatePHI(getValType(), PreviousBlocks.size());
+            auto PHI = Builder->CreatePHI(getValType(), PreviousBlocks.size(), "AccuPhi");
             // TODO: This is hackish
             // Using -1 to distinguish this Phi node from the other and treat it right in handle phi nodes
             PHINodes.push_back(make_pair(PHI, -1));
@@ -468,7 +468,8 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
     // Offset where the current offset closure starts relatively to the first
     int32_t NestClosOfs = 2;
     // Nested closure relative size
-    size_t NClosSize = (NbReqFields + 3 + FuncNbArgs) - NestClosOfs - FuncNbArgs - 2;
+    size_t TotalSize = (NbReqFields + 3 + FuncNbArgs);
+    size_t NClosSize =  TotalSize - NestClosOfs - FuncNbArgs - 2;
 
     Accu = Closure; push();
 
@@ -476,7 +477,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
         auto ArgSize = DestGenFuncs[i]->LlvmFunc->arg_size();
 
         // Usage : 
-        // ClosureSetNext(MainClosure, NestedClosureOffset,
+        // ClosureSetNest(MainClosure, NestedClosureOffset,
         //                NestedClosureSize, NestedFunctionPtr,
         //                NestedClosureNbArgs)
         Accu = Builder->CreateCall5(ClosSetNest, Closure,
@@ -486,7 +487,7 @@ void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds)
                                     ConstInt(ArgSize));
         push();
         NestClosOfs += 2;
-        NClosSize -= 2 + ArgSize;
+        NClosSize -= 4 + ArgSize;
     }
 
     Accu = Closure;
@@ -526,13 +527,13 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
     Value *TmpVal;
 
     DEBUG(
-            cout << "Generating Instruction "; Inst->Print(true);
-            printTab(2);
-            printf("Accu pointer before: {%p}\n", Accu);
-            if (Accu) Accu->dump();
-         )
+        cout << "Generating Instruction "; Inst->Print(true);
+        printTab(2);
+        printf("Accu pointer before: {%p}\n", Accu);
+        if (Accu) Accu->dump();
+    )
 
-    int StackSize = Stack.size();
+    //debug(ConstInt(Inst->OrigIdx));
 
     switch (Inst->OpNum) {
 
@@ -946,7 +947,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case APPLY1: makeApply(1); break;
         case APPLY2: makeApply(2); break;
         case APPLY3: makeApply(3); break;
-        case APPLY:  makeApply(Inst->Args[0]); break;
+        case APPLY:  makeApply(Inst->Args[0]); stackPop(); stackPop(); stackPop(); break;
         case APPTERM1: makeApply(1, true); Builder->CreateRet(getAccu()); break;
         case APPTERM2: makeApply(2, true); Builder->CreateRet(getAccu()); break;
         case APPTERM3: makeApply(3, true); Builder->CreateRet(getAccu()); break;
