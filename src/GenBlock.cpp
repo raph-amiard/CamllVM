@@ -73,6 +73,12 @@ void GenBlock::setNext(GenBlock* Block, bool IsBrBlock) {
     else NoBrBlock = Block;
 }
 
+void GenBlock::addCallInfo() {
+    Builder->SetInsertPoint(LlvmBlock);
+    Builder->CreateCall(getFunction("addCall"), 
+                        ConstInt(Function->Id));
+}
+
 std::string GenBlock::name() {
     stringstream ss;
     ss << "Block_" << Id;
@@ -296,10 +302,10 @@ void GenBlock::makeApply(size_t n, bool isTerminal) {
             && Ci->second.LlvmFunc->arg_size() == n) {
 
         auto FuncToCall = Ci->second.LlvmFunc;
-        bool SameFunc = FuncToCall != this->Function->LlvmFunc;
+        bool SameFunc = FuncToCall == this->Function->LlvmFunc;
         Value* TmpEnv;
 
-        if (SameFunc) {
+        if (!SameFunc) {
             TmpEnv = Builder->CreateCall(getFunction("getEnv"), "SavedEnv");
             Builder->CreateCall(getFunction("setEnv"), getAccu());
         }
@@ -312,7 +318,7 @@ void GenBlock::makeApply(size_t n, bool isTerminal) {
         if (isTerminal) Call->setTailCall();
         Accu = Call;
 
-        if (SameFunc)
+        if (!SameFunc)
             Builder->CreateCall(getFunction("setEnv"), TmpEnv);
 
     } else {
@@ -600,6 +606,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         }
         case RAISE: {
+            //Builder->CreateCall(getFunction("endCall"));
             Builder->CreateCall(getFunction("throwException"), getAccu());
             Builder->CreateRet(getAccu());
             break;
@@ -709,7 +716,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case ISINT: // Untested
-            Accu = Builder->CreateAnd(getAccu(), ConstInt(1));
+            Accu = Builder->CreateIntCast(
+                Builder->CreateAnd(getAccu(), ConstInt(1)),
+                Type::getInt1Ty(getGlobalContext()),
+                true
+            );
+
             break;
 
         case OFFSETREF:
@@ -832,6 +844,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             for (size_t i = 1; i < BSize; i++) {
                 Builder->CreateCall3(getFunction("storeDoubleField"), FloatBlock, ConstInt(i), stackPop());
             }
+            Accu = FloatBlock;
+            break;
         }
 
         case SETFIELD0: makeSetField(0); break;
@@ -892,7 +906,6 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 push();
             } else {
                 makeClosureRec(Inst->Args[0], Inst->Args[1], Inst->ClosureRecFns);
-                // TODO: Handle mutually recursive functions and rec fun with environnements
             }
             break;
         }
@@ -926,12 +939,17 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                                         getStackAt(0),
                                         getAccu());
             break;
+
         case GETPUBMET: // Untested
             push();
-            Accu = ConstInt(Inst->Args[0]);
+            Accu = valInt(ConstInt(Inst->Args[0]));
             // FALLTHROUGH
         case GETDYNMET: // Untested
-            Accu = Builder->CreateCall2(getFunction("getDynMethod"), getStackAt(0), getAccu());
+            Accu = Builder->CreateCall2(
+                getFunction("getDynMethod"), 
+                getStackAt(0), 
+                getAccu()
+            );
             break;
 
 
@@ -948,10 +966,26 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case APPLY2: makeApply(2); break;
         case APPLY3: makeApply(3); break;
         case APPLY:  makeApply(Inst->Args[0]); stackPop(); stackPop(); stackPop(); break;
-        case APPTERM1: makeApply(1, true); Builder->CreateRet(getAccu()); break;
-        case APPTERM2: makeApply(2, true); Builder->CreateRet(getAccu()); break;
-        case APPTERM3: makeApply(3, true); Builder->CreateRet(getAccu()); break;
-        case APPTERM: makeApply(Inst->Args[0], true); Builder->CreateRet(getAccu()); break;
+        case APPTERM1: 
+            makeApply(1, true); 
+            //Builder->CreateCall(getFunction("endCall"));
+            Builder->CreateRet(getAccu()); 
+            break;
+        case APPTERM2: 
+            makeApply(2, true); 
+            //Builder->CreateCall(getFunction("endCall"));
+            Builder->CreateRet(getAccu()); 
+            break;
+        case APPTERM3: 
+            makeApply(3, true); 
+            //Builder->CreateCall(getFunction("endCall"));
+            Builder->CreateRet(getAccu()); 
+            break;
+        case APPTERM: 
+            makeApply(Inst->Args[0], true); 
+            //Builder->CreateCall(getFunction("endCall"));
+            Builder->CreateRet(getAccu()); 
+            break;
 
         // Fall through return
         case STOP:
@@ -960,6 +994,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             if (Accu->getType() != getValType()) {
                 RetVal = Builder->CreateIntCast(Accu, getValType(), true);
             }
+            //Builder->CreateCall(getFunction("endCall"));
             Builder->CreateRet(RetVal); 
             break;
         }

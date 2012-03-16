@@ -57,6 +57,8 @@ Function* GenFunction::CodeGen() {
         i++;
     }
 
+    //FirstBlock->addCallInfo();
+
     // Generate each block and put it in the function's list of blocks
     for (auto BlockP : Blocks) {
         BlockP.second->CodeGen();

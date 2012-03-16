@@ -113,6 +113,7 @@ public:
     void makeGetField(size_t n);
     void debug(llvm::Value* DbgVal);
     void makeBoolToIntCast();
+    void addCallInfo();
 
     size_t StackOffset;
     StackValue* _getStackAt(size_t n, GenBlock* StartBlock=nullptr);

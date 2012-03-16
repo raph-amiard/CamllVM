@@ -1,4 +1,5 @@
 #include <ocaml_runtime/mlvalues.h>
+#include <ocaml_runtime/printexc.h>
 #include <ocaml_runtime/major_gc.h>
 #include <ocaml_runtime/memory.h>
 #include <ocaml_runtime/prims.h>
@@ -7,10 +8,11 @@
 
 #define Lookup(obj, lab) Field (Field (obj, 0), Int_val(lab))
 
-#define DEBUG 1
+#ifndef STDDBG
+#define STDDBG 0
+#endif
 
-#define DBG(inst) { inst }
-
+#define IFDBG(insts) if (STDDBG) { insts }
 
 /* GC interface */
 
@@ -23,15 +25,26 @@
 #define Restore_after_c_call \
   {}
 
+
+typedef struct _Call {
+    value CallFnId;
+    int NbSubCalls;
+    struct _Call* SubCalls[128];
+    struct _Call* ParentCall;
+} Call;
+
+Call* RootCall = NULL;
+Call* CurrentCall = NULL;
+
 // ================ STDLIB Declaration ================== //
 
 value Env = 0;
 void setEnv(value E) {
-    ////printf("IN SETENVVV\n\n");
+    //IFDBG(printf("IN SETENVVV\n\n");)
     Env = E;
 }
 value getEnv() {
-    //printf("IN GETENVVV, ENV = %p\n\n", (void*)Env);
+    //IFDBG(printf("IN GETENVVV, ENV = %p\n\n", (void*)Env);)
     return Env;
 }
 
@@ -60,7 +73,9 @@ void debug(value Arg) {
 // It is compatible with the regular ocaml runtime's closure layout 
 
 value makeClosure(value NVars, value FPtr, value NbArgs) {
-    //printf("IN MAKE CLOSURE, NVars = %ld, FPtr = %p, NbArgs = %ld\n",NVars, (void*)FPtr, NbArgs);
+    IFDBG(
+        printf("IN MAKE CLOSURE, NVars = %ld, FPtr = %p, NbArgs = %ld\n",NVars, (void*)FPtr, NbArgs);
+    )
     value Closure;
     int BlockSize = 3 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
@@ -69,8 +84,10 @@ value makeClosure(value NVars, value FPtr, value NbArgs) {
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
     Field(Closure, BlockSize - 2) = NbArgs;
-    //printf("CLOSURE ADDR: %p\n", (void*)Closure);
-    //printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
+    IFDBG(
+        printf("CLOSURE ADDR: %p\n", (void*)Closure);
+        printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
+    )
     return Closure;
 }
 
@@ -94,7 +111,7 @@ value closureSetNestedClos(value Closure, value NClOffset, value NClSize,
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {
-    //printf("INTO CLOSURESETVAR\n\n");
+    IFDBG(printf("INTO CLOSURESETVAR\n\n");)
     Field(Closure, VarIdx + 1) = Value;
 }
 
@@ -102,19 +119,17 @@ int ExtraArgs = 0;
 
 value apply(value Closure, value NbArgs, value* Args) {
 
-#if 0
-    printf("IN aPPLY, closure = %p\n", (void*)Closure);
-    int i;
-    for (i = 0; i < NbArgs; i++)
-        printf("ARG %d: %p\n", i, (void*)Args[i]);
-    printf("\n");
-#endif
-    int ArgsSize = NbArgs;
+    IFDBG(
+        printf("IN aPPLY, closure = %p\n", (void*)Closure);
+        int i;
+        for (i = 0; i < NbArgs; i++)
+            printf("ARG %d: %p\n", i, (void*)Args[i]);
+        printf("\n");
+    )
     value CClosure = Closure;
 
     // While we still have arg to apply 
     while (NbArgs > 0) {
-        //printf("IN aPPLY, closure = %p, one more loop\n", (void*)Closure);
 
         // Get the number of args the current closure needs
         int Size = Wosize_val(CClosure);
@@ -243,6 +258,7 @@ value makeBlock(value tag, value NbVals) {
 }
 
 value makeFloatBlock(value Size) {
+    //printf("in makefloatblock, Size = %ld\n", Size);
       value Block;
       if ((unsigned)Size <= Max_young_wosize / Double_wosize) {
         Alloc_small(Block, Size * Double_wosize, Double_array_tag);
@@ -252,11 +268,13 @@ value makeFloatBlock(value Size) {
       return Block;
 }
 
-void storeDoubleField(value Block,  value Val) {
-    Store_double_field(Block, 0, Double_val(Val));
+void storeDoubleField(value Block, value Idx,  value Val) {
+    //printf("in storedoublefield, block = %p, idx = %ld\n", (void*)Block, Idx);
+    Store_double_field(Block, Idx, Double_val(Val));
 }
 
 value getDoubleField(value Block, value Idx) {
+    //printf("in getdoublefield, block = %p, idx = %ld\n", (void*)Block, Idx);
     double d = Double_field(Block, Idx);
     value Double;
     Alloc_small(Double, Double_wosize, Double_tag);
@@ -381,9 +399,13 @@ void removeExceptionContext() {
     free(Context);
 }
 
+void printCallChain(Call* CCall, int depth);
+
 void throwException(value ExcVal) {
     if (!NextExceptionContext) {
-        printf("Uncatched Exception\n");
+        char* msg = caml_format_exception(ExcVal);
+        printf("Uncatched Exception: %s\n", msg);
+        printCallChain(RootCall, 0);
         exit(0);
     }
     CurrentExceptionVal = ExcVal;
@@ -392,21 +414,24 @@ void throwException(value ExcVal) {
 }
 
 value vectLength(value Vect) {
+    //printf("INVECTLEN\n");
     mlsize_t Size = Wosize_val(Vect);
     if (Tag_val(Vect) == Double_array_tag) Size = Size / Double_wosize;
     return Val_long(Size);
 }
 
 value getVectItem(value Vect, value Idx) {
+    //printf("INGETVECTITEM, Vect = %p, Idx = %ld\n", (void*)Vect, Idx);
     return Field(Vect, Long_val(Idx));
 }
 
 void setVectItem(value Vect, value Idx, value NewVal) {
-      Modify(&Field(Vect, Long_val(Idx)), NewVal);
+    //printf("INSETVECTITEM, Vect = %p, Idx = %ld, NewVal = %ld\n", (void*)Vect, Idx, NewVal);
+    Modify(&Field(Vect, Long_val(Idx)), NewVal);
 }
 
 value getStringChar(value String, value CharIdx) {
-      return Val_int(Byte_u(String, Long_val(CharIdx)));
+    return Val_int(Byte_u(String, Long_val(CharIdx)));
 }
 
 void setStringChar(value String, value CharIdx, value Char) {
@@ -416,10 +441,14 @@ void setStringChar(value String, value CharIdx, value Char) {
 // ============================= OBJECTS ============================== //
 
 value getMethod(value Object, value Label) {
+    IFDBG(printf("INTO GETMETHOD\n");)
     return Lookup(Object, Label);
 }
 
 value getDynMethod(value Object, value Tag) {
+
+    IFDBG(printf("INTO GETDYNMETHOD, Tag = %ld\n", Tag);)
+
       value Methods = Field (Object, 0);
       int Li = 3, 
           Hi = Field(Methods,0), 
@@ -429,6 +458,9 @@ value getDynMethod(value Object, value Tag) {
         if (Tag < Field(Methods,Mi)) Hi = Mi-2;
         else Li = Mi;
       }
+
+      IFDBG(printf("MeTHOD OFFSeT : %d\n", Li-1);)
+
       return Field (Methods, Li-1);
 }
 
@@ -444,4 +476,43 @@ value getSwitchOffset(value SwitchArg, value Dispatch) {
 
 void offsetRef(value Ref, value Offset) {
       Field(Ref, 0) += Offset << 1;
+}
+
+void addCall(value FnId) {
+
+    Call* NewCall = malloc(sizeof(Call));
+    NewCall->CallFnId = FnId;
+    NewCall->NbSubCalls = 0;
+    NewCall->ParentCall = CurrentCall;
+
+    if (!RootCall)
+        RootCall = NewCall;
+    else
+        CurrentCall->SubCalls[CurrentCall->NbSubCalls++] = NewCall;
+
+    CurrentCall = NewCall;
+}
+
+void endCall() {
+    CurrentCall = CurrentCall->ParentCall;
+}
+
+void printTab(int depth) {
+    int i;
+    for (i = 0; i < depth; i++)
+        printf("  ");
+}
+
+void printCallChain(Call* CCall, int depth) {
+    int i;
+    printf("%ld", CCall->CallFnId);
+    if (CCall->NbSubCalls > 0) {
+        printf("[");
+        for (i = 0; i < CCall->NbSubCalls; i++) {
+            printCallChain(CCall->SubCalls[i], depth+1);
+            if (i < CCall->NbSubCalls - 1)
+                printf(", ");
+        }
+        printf ("]");
+    }
 }

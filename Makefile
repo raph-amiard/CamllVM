@@ -30,8 +30,14 @@ stdlib:
 	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib/CStdLib.c
 	${CSTDLIBCC} -std=c++0x -S -emit-llvm -o ${BIN}/ZamSimpleInterpreter.ll ${SRC}/zsi/ZamSimpleInterpreter.cpp
 
+dbgstdlib:
+	${CSTDLIBCC} -D STDDBG -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib/CStdLib.c
 
-main: $(OBJECTS) ocaml_runtime stdlib
+main: _main stdlib
+
+dbgmain: _main dbgstdlib
+
+_main: $(OBJECTS) ocaml_runtime 
 	${CC} ${LIBS} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
