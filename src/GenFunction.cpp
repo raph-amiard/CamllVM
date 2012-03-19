@@ -102,15 +102,14 @@ void GenFunction::generateApplierFunction() {
     auto Block1 = BasicBlock::Create(getGlobalContext());
     Builder->SetInsertPoint(Block1);
 
-    auto Closure = ApplierFunction->arg_begin();
-    auto BlockSize = Builder->CreateCall(Module->TheModule->getFunction("getBlockSize"), Closure);
+    auto ArgsTab = ApplierFunction->arg_begin();
 
     vector<Value*> Args;
     for (int i = 0; i < Arity; i++) {
         Args.push_back(Builder->CreateCall2(
             Module->TheModule->getFunction("getField"),
-            Closure,
-            Builder->CreateSub(BlockSize, ConstInt(2 + Arity - i))
+            ArgsTab,
+            ConstInt(Arity - i - 1)
         ));
     }
     auto Ret = Builder->CreateCall(this->LlvmFunc, ArrayRef<Value*>(Args));

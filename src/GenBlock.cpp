@@ -365,7 +365,7 @@ void GenBlock::makePrimCall(size_t n, int32_t NumPrim) {
         Args.push_back(ConstInt(n));
         ss << "n";
         for (size_t i = 0; i < n; i++) stackPop();
-        printf("ARGS SIZE : %d\n", Args.size());
+        printf("ARGS SIZE : %ld\n", Args.size());
         cout << ss.str() << endl;
     }
     makeCheckedCall(getFunction(ss.str()), Args);

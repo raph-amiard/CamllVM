@@ -44,7 +44,7 @@ void setEnv(value E) {
     Env = E;
 }
 value getEnv() {
-    //IFDBG(printf("IN GETENVVV, ENV = %p\n\n", (void*)Env);)
+    IFDBG(printf("IN GETENVVV, ENV = %p\n\n", (void*)Env);)
     return Env;
 }
 
@@ -56,38 +56,29 @@ void debug(value Arg) {
     printf("DEBUG : %ld\n", (long) Arg);
 }
 
-// Closure handling is a little complex. 
-// We need to store :
-// - The code pointer
-// - The closure captured elements
-// - The yet supplied number of args
-// - The yet supplied args if any
-// In any case we are gonna need 1 + NVars + 1 + NbArgs more fields 
-// in the closure to store all this extra information
-// The layout of the block will thus be :
-//
-// -----------------------------
-// |CodePtr|Vars|Args|NbRemArgs|
-// -----------------------------
-//
-// It is compatible with the regular ocaml runtime's closure layout 
+// TODO: Recomment that shit
 
 value makeClosure(value NVars, value FPtr, value NbArgs) {
+
     IFDBG(
         printf("IN MAKE CLOSURE, NVars = %ld, FPtr = %p, NbArgs = %ld\n",NVars, (void*)FPtr, NbArgs);
     )
+
     value Closure;
-    int BlockSize = 3 + NVars + NbArgs;
+    int BlockSize = 2 + NVars + NbArgs;
     Alloc_small(Closure, BlockSize, Closure_tag);
+
     // Set the code pointer
     Code_val(Closure) = (code_t)FPtr;
+
     // Set the NbRemArgs to the total nb of args
     Field(Closure, BlockSize - 1) = NbArgs;
-    Field(Closure, BlockSize - 2) = NbArgs;
+
     IFDBG(
         printf("CLOSURE ADDR: %p\n", (void*)Closure);
         printf("CLOSURE FN ADDR: %p\n", (void*)FPtr);
     )
+
     return Closure;
 }
 
@@ -111,68 +102,118 @@ value closureSetNestedClos(value Closure, value NClOffset, value NClSize,
 }
 
 void closureSetVar(value Closure, value VarIdx, value Value) {
-    IFDBG(printf("INTO CLOSURESETVAR\n\n");)
+    IFDBG(printf("INTO CLOSURESETVAR, %p\n", (void*)Value);)
     Field(Closure, VarIdx + 1) = Value;
 }
 
 int ExtraArgs = 0;
 
-value apply(value Closure, value NbArgs, value* Args) {
+#define Partial_closure_tag 245
+#define Is_partial(Closure) Tag_val(Closure) == Partial_closure_tag
 
-    IFDBG(
-        printf("IN aPPLY, closure = %p\n", (void*)Closure);
-        int i;
-        for (i = 0; i < NbArgs; i++)
-            printf("ARG %d: %p\n", i, (void*)Args[i]);
-        printf("\n");
-    )
-    value CClosure = Closure;
+value createPartial(value Closure, value NbArgs, value* Args) {
+    IFDBG(printf("create partial\n");)
+    int i;
+    int IsPartial = Is_partial(Closure);
+    value Partial;
+    value CSize = Wosize_val(Closure);
+    value CNbArgs = IsPartial ? CSize - 3 : Field(Closure, CSize - 1);
+    // Size = One field for each arg + CodeVal + Nbargs
+    value PartialSize = 3+CNbArgs;
+    value NbRemArgs = Field(Closure, CSize-1);
 
-    // While we still have arg to apply 
-    while (NbArgs > 0) {
+    Alloc_small(Partial, PartialSize, Partial_closure_tag);
 
-        // Get the number of args the current closure needs
-        int Size = Wosize_val(CClosure);
-        //printf("SIZE = %d\n", Size);
-        int NbRemArgs = Field(CClosure, (Size - 2));
-        int NbTotalArgs = Field(CClosure, (Size - 1));
-        //printf("NB REM ARGS : %d, NB TOTAL ARGS : %d\n", NbRemArgs, NbTotalArgs);
-
-        // Fill the closure with args until it's full 
-        // or we don't have any args left
-        while (NbRemArgs > 0 && NbArgs > 0) {
-            Field(CClosure, (Size - 3 - NbTotalArgs + NbRemArgs)) = 
-                (value)Args[NbArgs-1];
-            NbRemArgs--; NbArgs--;
-        }
-
-        // If the closure is not full
-        // and we don't have any args left, return the closure
-        if (NbRemArgs > 0) {
-            Field(CClosure, (Size - 2)) = NbRemArgs;
-            return CClosure;
-        }
-
-        // If the closure is full, apply it
-        
-        // Reinit the closure remaining args
-        Field(CClosure, (Size - 2)) = NbTotalArgs;
-
-        // Add the extra arguments if any
-        ExtraArgs += NbArgs;
-
-        value (*FPtr)(value) = (value(*)(value)) Code_val(CClosure);
-        value OldEnv = Env;
-        Env = CClosure;
-        CClosure = FPtr(CClosure);
-        Env = OldEnv;
-
-        ExtraArgs -= NbArgs;
-
-        // If NbArgs = 0, 
-        // we get out of the loop and return the application result
+    if (IsPartial) {
+        // Copy the partial
+        for (i = 0; i < PartialSize-1; i++)
+            Field(Partial, i) = Field(Closure, i);
+    } else {
+        // Add the reference to original closure
+        Field(Partial, 1) = Closure;
+        Code_val(Partial) = Code_val(Closure);
     }
 
+    // Fill up remaining args
+    for (i = 0; i < NbArgs; i++)
+        Field(Partial, PartialSize-NbRemArgs-1+i) = Args[NbArgs-1-i];
+
+    Field(Partial, PartialSize-1) = NbRemArgs - NbArgs;
+
+    return Partial;
+}
+
+void printBlock(value Block) {
+    int i;
+    value BSize = Wosize_val(Block);
+    printf("BLOCK : [");
+    for (i=0; i < BSize; i++) {
+        value Fld = Field(Block, i);
+        if (Is_block(Fld))
+            printf("%p", (void*)Fld);
+        else
+            printf("%ld", Fld);
+        if (i < BSize-1) printf(" ");
+    }
+    printf("]\n");
+}
+
+value apply(value Closure, value NbArgs, value* Args) {
+
+    IFDBG(printf("IN APPLY, Nbargs = %ld\n", NbArgs);)
+
+    value CClosure = Closure;
+    int i;
+
+    while (NbArgs > 0) {
+        value CSize = Wosize_val(CClosure);
+        int CNbArgs = Field(CClosure, (CSize - 1));
+
+        IFDBG(printf("IN APPLY, closure size = %ld\n", CSize);)
+
+        // If not enough args
+        // We'll have to create a new closure
+        if (NbArgs < CNbArgs) {
+            return createPartial(CClosure, NbArgs, Args);
+        }
+
+        // Fill up remaining args
+        for (i = 0; i < NbArgs && i < CNbArgs; i++) {
+            IFDBG(printf("ARG : %ld\n", Args[NbArgs-1-i]);)
+            Field(CClosure, CSize-CNbArgs-1+i) = Args[NbArgs-1-i];
+        }
+
+        // Get the function pointer
+        value (*FPtr)(value) = (value(*)(value)) Code_val(CClosure);
+
+        // Save the env
+        value OldEnv = Env;
+        value ArgsTabPtr;
+
+        // Set the env, and get a ptr to the beginning of the args
+        if (Is_partial(CClosure)) {
+            IFDBG(printf("closure is a partial application !\n");)
+            Env = Field(CClosure, 1);
+            ArgsTabPtr = CClosure + 2*sizeof(value);
+        } else {
+            Env = CClosure;
+            ArgsTabPtr = CClosure + (CSize-CNbArgs-1)*sizeof(value);
+        }
+
+        IFDBG(
+            for (int i = 0; i < CNbArgs; i++)
+                printf("ARGINTAB: %ld\n", ((value*)ArgsTabPtr)[i]);
+        )
+
+        // Apply the closure
+        CClosure = FPtr(ArgsTabPtr);
+
+        Env = OldEnv;
+        NbArgs -= CNbArgs;
+
+    }
+
+    IFDBG(printf("APPLY RESULT : %ld\n", CClosure);)
     return CClosure;
 }
 
@@ -211,11 +252,12 @@ value apply2(value Closure, value Arg1, value Arg2) {
 value getBlockSize(value Block) { return Wosize_val(Block); }
 
 value getField(value Block, value Idx) { 
-    //printf("Getfield : %p\n", (void*)Field(Block, Idx)); 
+    IFDBG(printf("Getfield : %p\n", (void*)Field(Block, Idx));)
     return Field(Block, Idx); 
 }
 
 void setField(value Field, value Idx, value NewVal) {
+    IFDBG(printf("Getfield : %p\n", (void*)NewVal);)
     Modify(&Field(Field, Idx), NewVal);
 }
 
@@ -457,19 +499,19 @@ value getDynMethod(value Object, value Tag) {
 
     IFDBG(printf("INTO GETDYNMETHOD, Tag = %ld\n", Tag);)
 
-      value Methods = Field (Object, 0);
-      int Li = 3, 
-          Hi = Field(Methods,0), 
-          Mi;
-      while (Li < Hi) {
-        Mi = ((Li+Hi) >> 1) | 1;
-        if (Tag < Field(Methods,Mi)) Hi = Mi-2;
-        else Li = Mi;
-      }
+    value Methods = Field (Object, 0);
+    int Li = 3, 
+        Hi = Field(Methods,0), 
+        Mi;
+    while (Li < Hi) {
+      Mi = ((Li+Hi) >> 1) | 1;
+      if (Tag < Field(Methods,Mi)) Hi = Mi-2;
+      else Li = Mi;
+    }
 
-      IFDBG(printf("MeTHOD OFFSeT : %d\n", Li-1);)
+    IFDBG(printf("MeTHOD OFFSeT : %d\n", Li-1);)
 
-      return Field (Methods, Li-1);
+    return Field (Methods, Li-1);
 }
 
 value getSwitchOffset(value SwitchArg, value Dispatch) {
@@ -503,12 +545,6 @@ void addCall(value FnId) {
 
 void endCall() {
     CurrentCall = CurrentCall->ParentCall;
-}
-
-void printTab(int depth) {
-    int i;
-    for (i = 0; i < depth; i++)
-        printf("  ");
 }
 
 void printCallChain(Call* CCall, int depth) {
