@@ -89,6 +89,10 @@ for f in sorted(os.listdir("."), cmp_filenames):
             compile_and_run(f.split(".")[0])
             test_num += 1
     except Exception, e:
+        print "Unknown error, aborting"
+        break
+    except KeyboardInterrupt:
+        print "Aborting tests ..."
         break
 
 os.remove("a.out")
