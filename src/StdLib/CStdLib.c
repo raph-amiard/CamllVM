@@ -422,12 +422,9 @@ void throwException(value ExcVal) {
 }
 
 value vectLength(value Vect) {
-    printf("INVECTLEN\n");
-    fflush(stdout);
     mlsize_t Size = Wosize_val(Vect);
     if (Tag_val(Vect) == Double_array_tag) Size = Size / Double_wosize;
     value ret = Val_long(Size);
-    printf("OUTVECTLEN\n");
     return ret;
 }
 
