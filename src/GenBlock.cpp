@@ -234,7 +234,7 @@ BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
 
-    DEBUG(debug(ConstInt(this->Id));)
+    //DEBUG(debug(ConstInt(this->Id));)
 
     for (auto Inst : this->Instructions)
         GenCodeForInst(Inst);
@@ -281,15 +281,22 @@ ConstantInt* ConstInt(uint64_t val) {
 }
 
 void GenBlock::makeCheckedCall(Value* Callee, ArrayRef<Value*> Args) {
-    /*
-    if (UnwindBlocks.size() > 0) {
-        auto Blocks = addBlock();
-        Accu = Builder->CreateInvoke(Callee, Blocks.second, UnwindBlocks.front(), Args);
-        Builder->SetInsertPoint(Blocks.second);
-    } else {
-    */
-        Accu = Builder->CreateCall(Callee, Args);
-    //}
+    Accu = Builder->CreateCall(Callee, Args);
+}
+
+Value* GenBlock::createArrayFromStack(size_t Size) {
+    auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), Size));
+    Array->setName("Array");
+    for (size_t i = 1; i <= Size; i++) {
+        vector<Value*> GEPlist; 
+        GEPlist.push_back(ConstInt(0));
+        GEPlist.push_back(ConstInt(i-1));
+        stringstream ss; ss << "ApplyArrayEl" << i;
+        auto Ptr = Builder->CreateGEP(Array, GEPlist, ss.str());
+        auto Val = getStackAt(Size-i);
+        Builder->CreateStore(Val, Ptr);
+    }
+    return Builder->CreatePointerCast(Array, getValType()->getPointerTo(), "ArrayPtr");
 }
 
 void GenBlock::makeApply(size_t n, bool isTerminal) {
@@ -323,19 +330,7 @@ void GenBlock::makeApply(size_t n, bool isTerminal) {
 
     } else {
 
-        auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), n));
-        Array->setName("ApplyArray");
-        for (size_t i = 1; i <= n; i++) {
-            vector<Value*> GEPlist; 
-            GEPlist.push_back(ConstInt(0));
-            GEPlist.push_back(ConstInt(i-1));
-            stringstream ss; ss << "ApplyArrayEl" << i;
-            auto Ptr = Builder->CreateGEP(Array, GEPlist, ss.str());
-            auto Val = getStackAt(n-i);
-            Builder->CreateStore(Val, Ptr);
-        }
-
-        auto ArrayPtr = Builder->CreatePointerCast(Array, getValType()->getPointerTo(), "ApplyArrayPtr");
+        auto ArrayPtr = createArrayFromStack(n);
         getAccu()->setName("ApplyClosure");
         ArgsV.push_back(getAccu());
         ArgsV.push_back(ConstInt(n));
@@ -361,8 +356,17 @@ void GenBlock::makePrimCall(size_t n, int32_t NumPrim) {
             Args.push_back(stackPop());
         ss << n;
     } else {
+        printf("IN TEH RIGHT BLOCKEN \n");
+        push(getAccu());
+
+        auto ArrayPtr = createArrayFromStack(n);
+        auto ArrayAsVal = Builder->CreatePtrToInt(ArrayPtr, getValType());
+        Args.push_back(ArrayAsVal);
         Args.push_back(ConstInt(n));
         ss << "n";
+        for (size_t i = 0; i < n; i++) stackPop();
+        printf("ARGS SIZE : %d\n", Args.size());
+        cout << ss.str() << endl;
     }
     makeCheckedCall(getFunction(ss.str()), Args);
     getAccu()->setName("PrimCallRes");
@@ -539,7 +543,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         if (Accu) Accu->dump();
     )
 
-    //debug(ConstInt(Inst->OrigIdx));
+    debug(ConstInt(Inst->OrigIdx));
 
     switch (Inst->OpNum) {
 
@@ -959,6 +963,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case C_CALL3: makePrimCall(3, Inst->Args[0]); break;
         case C_CALL4: makePrimCall(4, Inst->Args[0]); break;
         case C_CALL5: makePrimCall(5, Inst->Args[0]); break;
+        case C_CALLN: makePrimCall(Inst->Args[0], Inst->Args[1]); break;
 
 
         // Apply Instructions

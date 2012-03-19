@@ -335,6 +335,14 @@ value primCall5(value Prim, value Val1, value Val2, value Val3, value Val4, valu
     return Ret;
 }
 
+value primCalln(value Prim, value Argv, value Argc) {
+    printf("INTO PRIMCALL N\n");
+    Setup_for_c_call;
+    value Ret = Primitive(Prim)(Argv, Argc);
+    Restore_after_c_call;
+    return Ret;
+}
+
 // ================================= GLOBAL DATA ============================ //
 
 value getGlobal(value Idx) {
@@ -414,10 +422,13 @@ void throwException(value ExcVal) {
 }
 
 value vectLength(value Vect) {
-    //printf("INVECTLEN\n");
+    printf("INVECTLEN\n");
+    fflush(stdout);
     mlsize_t Size = Wosize_val(Vect);
     if (Tag_val(Vect) == Double_array_tag) Size = Size / Double_wosize;
-    return Val_long(Size);
+    value ret = Val_long(Size);
+    printf("OUTVECTLEN\n");
+    return ret;
 }
 
 value getVectItem(value Vect, value Idx) {

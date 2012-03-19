@@ -58,9 +58,8 @@ private:
     GenBlock* BrBlock;
     GenBlock* NoBrBlock;
 
-    // Exception handling
-    std::list<llvm::BasicBlock*> UnwindBlocks;
     void makeCheckedCall(llvm::Value* callee, llvm::ArrayRef<llvm::Value*> Args);
+
 
     // List of PhiNodes to fill at the end of function codegen
     std::list<std::pair<llvm::PHINode*, int>> PHINodes;
@@ -89,6 +88,8 @@ private:
 
     std::map<StackValue*, StackValue*> MutatedVals;
     StackValue* getMutatedValue(StackValue* Val);
+
+    llvm::Value* createArrayFromStack(size_t Size);
 
 public:
     GenBlock(int Id, GenFunction* Function);
