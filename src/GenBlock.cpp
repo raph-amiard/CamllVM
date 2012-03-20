@@ -582,10 +582,11 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
         case PUSHTRAP: {
             auto Buf = Builder->CreateCall(getFunction("getNewBuffer"));
-            auto SetJmpFunc = getFunction("_setjmp");
+            auto SetJmpFunc = getFunction("__sigsetjmp");
             auto JmpBufType = Function->Module->TheModule->getTypeByName("struct.__jmp_buf_tag")->getPointerTo();
             auto JmpBuf = Builder->CreateBitCast(Buf, JmpBufType);
-            auto SetJmpRes = Builder->CreateCall(SetJmpFunc, JmpBuf);
+            auto Const0 = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
+            auto SetJmpRes = Builder->CreateCall2(SetJmpFunc, JmpBuf, Const0);
             auto BoolVal = Builder->CreateIntCast(SetJmpRes, Type::getInt1Ty(getGlobalContext()), getValType());
             auto Blocks = addBlock();
             auto TrapBlock = Function->Blocks[Inst->Args[0]];
@@ -1110,4 +1111,7 @@ void GenBlock::PrintAdjBlocks() {
     cout << "\n";
 }
 
-
+Function* GenBlock::getFunction(string Name) {
+  auto F = Function->Module->TheModule->getFunction(Name);
+  return F;
+}

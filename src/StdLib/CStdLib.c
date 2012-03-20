@@ -3,8 +3,8 @@
 #include <ocaml_runtime/major_gc.h>
 #include <ocaml_runtime/memory.h>
 #include <ocaml_runtime/prims.h>
+#include <ocaml_runtime/fail.h>
 #include <stdio.h>
-#include <setjmp.h>
 
 #define Lookup(obj, lab) Field (Field (obj, 0), Int_val(lab))
 
@@ -405,23 +405,23 @@ void setGlobal(value Idx, value Val) {
 
 typedef struct _JmpBufList {
     struct _JmpBufList* Next;
-    jmp_buf JmpBuf;
+    struct longjmp_buffer JmpBuf;
     value Env;
 } JmpBufList;
 
 JmpBufList* NextExceptionContext = NULL;
-value CurrentExceptionVal;
 
 char* getNewBuffer() {
     JmpBufList* NewContext = malloc(sizeof(JmpBufList));
     NewContext->Next = NextExceptionContext;
     NewContext->Env = Env;
     NextExceptionContext = NewContext;
-    return (char*)NewContext->JmpBuf;
+    caml_external_raise = &NewContext->JmpBuf;
+    return (char*)NewContext->JmpBuf.buf;
 }
 
 value getExceptionValue() {
-    return CurrentExceptionVal;
+    return caml_exn_bucket;
 }
 
 value addExceptionContext() {
@@ -430,7 +430,7 @@ value addExceptionContext() {
     NewContext->Next = NextExceptionContext;
     NextExceptionContext = NewContext;
 
-    if (setjmp(NewContext->JmpBuf) == 0) {
+    if (sigsetjmp(NewContext->JmpBuf.buf, 0) == 0) {
         printf("RETURNING FROM ADD EXCEPTION CONTEXT NORMALLY\n");
         return 0;
     } else {
@@ -439,7 +439,7 @@ value addExceptionContext() {
         NextExceptionContext = Ctx->Next;
         free(Ctx);
         printf("WE OUTTA THERE\n");
-        return CurrentExceptionVal;
+        return caml_exn_bucket;
     }
 }
 
@@ -447,6 +447,7 @@ void removeExceptionContext() {
     JmpBufList* Context = NextExceptionContext;
     NextExceptionContext = Context->Next;
     free(Context);
+    caml_external_raise = &NextExceptionContext->JmpBuf;
 }
 
 void printCallChain(Call* CCall, int depth);
@@ -458,9 +459,9 @@ void throwException(value ExcVal) {
         printCallChain(RootCall, 0);
         exit(0);
     }
-    CurrentExceptionVal = ExcVal;
+    caml_exn_bucket = ExcVal;
     Env = NextExceptionContext->Env;
-    longjmp(NextExceptionContext->JmpBuf, 1);
+    siglongjmp(NextExceptionContext->JmpBuf.buf, 1);
 }
 
 value vectLength(value Vect) {

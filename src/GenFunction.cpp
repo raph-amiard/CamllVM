@@ -121,8 +121,3 @@ void GenFunction::generateApplierFunction() {
     verifyFunction(*ApplierFunction);
 }
 
-
-Function* GenBlock::getFunction(string Name) {
-  auto F = Function->Module->TheModule->getFunction(Name);
-  return F;
-}
