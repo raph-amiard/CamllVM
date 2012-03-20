@@ -13,7 +13,7 @@ deque<ZInstruction*>* removeDeadInstructions(deque<ZInstruction*>* Instructions)
         Instructions->pop_front();
         if (Inst->idx >= MaxBranch || (Inst->idx >= SmallestCondBranch && SmallestCondBranch > 0)) {
             NewInsts->push_back(Inst);
-            if (Inst->isCondJump() && 
+            if ((Inst->isCondJump() || Inst->isPushTrap()) && 
                     (SmallestCondBranch > Inst->getDestIdx() || 
                      SmallestCondBranch == 0)) {
                 SmallestCondBranch = Inst->getDestIdx();

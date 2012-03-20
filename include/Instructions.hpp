@@ -302,6 +302,10 @@ public:
         return OpNum == SWITCH;
     }
 
+    inline bool isPushTrap() {
+        return OpNum == PUSHTRAP;
+    }
+
     inline bool isReturn() {
         switch (OpNum) {
             case RAISE:
