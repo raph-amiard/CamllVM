@@ -124,6 +124,8 @@ public:
     llvm::Value* intVal(llvm::Value* From);
     llvm::Value* valInt(llvm::Value* From);
     llvm::Value* castToInt(llvm::Value* Val);
+    llvm::Value* castToVal(llvm::Value* Val);
+    llvm::Value* castToBool(llvm::Value* Val);
     llvm::Value* castToPtr(llvm::Value* Val);
 
     // Function getters
@@ -214,5 +216,6 @@ public:
 };
 
 inline llvm::Type* getValType();
+llvm::Type* getBoolType(); 
 
 #endif // CODEGEN_HPP

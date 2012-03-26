@@ -54,6 +54,7 @@ value isClosureHeader(value Header) {
 
 void debug(value Arg) {
     printf("DEBUG : %ld\n", (long) Arg);
+    fflush(stdout);
 }
 
 // TODO: Recomment that shit
@@ -560,4 +561,8 @@ void printCallChain(Call* CCall, int depth) {
         }
         printf ("]");
     }
+}
+
+void cmpDebug(value A, value B) {
+    printf("ULTINT : A = %ld, B = %ld\n", A, B);
 }

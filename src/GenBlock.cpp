@@ -36,6 +36,11 @@ Type* getValType() {
     return Type::getIntNTy(getGlobalContext(), sizeof(value) * 8);
 }
 
+llvm::Type* getBoolType() {
+    return Type::getInt1Ty(getGlobalContext());
+}
+
+
 // ================ GenBlock Implementation ================== //
 
 GenBlock::GenBlock(int Id, GenFunction* Function) {
@@ -230,7 +235,7 @@ BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
 
-    DEBUG(debug(ConstInt(this->Id));)
+    //DEBUG(debug(ConstInt(this->Id));)
 
     for (auto Inst : this->Instructions)
         GenCodeForInst(Inst);
@@ -252,6 +257,23 @@ Value* GenBlock::castToInt(Value* Val) {
         return Builder->CreatePtrToInt(Val, getValType());
     else
         return Val;
+}
+
+Value* GenBlock::castToVal(Value* Val) {
+    if (Val->getType() != getValType()) {
+        if (Function->BoolsAsVals.find(Val) != Function->BoolsAsVals.end())
+            return Function->BoolsAsVals[Accu];
+        else
+            return Builder->CreateIntCast(Accu, getValType(), true);
+    } else
+        return Val;
+}
+
+Value* GenBlock::castToBool(llvm::Value* Val) {
+    return Builder->CreateIntCast( Val,
+        Type::getInt1Ty(getGlobalContext()),
+        true
+    );
 }
 
 Value* GenBlock::castToPtr(Value* Val) {
@@ -313,8 +335,9 @@ void GenBlock::makeApply(size_t n, bool isTerminal) {
             Builder->CreateCall(getFunction("setEnv"), getAccu());
         }
 
-        for (size_t i = 1; i <= n; i++)
-            ArgsV.push_back(getStackAt(n-i));
+        for (size_t i = 1; i <= n; i++) {
+            ArgsV.push_back(castToVal(getStackAt(n-i)));
+        }
 
         auto Call = Builder->CreateCall(FuncToCall, ArgsV);
         Call->setCallingConv(CallingConv::Fast);
@@ -338,6 +361,7 @@ void GenBlock::makeApply(size_t n, bool isTerminal) {
 
     for (size_t i = 0; i < n; i++)
         stackPop();
+    
 }
 
 void GenBlock::makePrimCall(size_t n, int32_t NumPrim) {
@@ -517,7 +541,7 @@ void GenBlock::makeGetField(size_t n) {
 }
 
 void GenBlock::makeBoolToIntCast() {
-    auto AsVal = Builder->CreateIntCast(Accu, getValType(), true);
+    auto AsVal = valInt(Builder->CreateIntCast(Accu, getValType(), true));
     Function->BoolsAsVals[Accu] = AsVal;
 }
 
@@ -713,16 +737,13 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case BOOLNOT: // Untested
-            Accu = Builder->CreateNot(getAccu());
+            Accu = castToBool(Builder->CreateNot(getAccu()));
+            makeBoolToIntCast();
             break;
 
         case ISINT: // Untested
-            Accu = Builder->CreateIntCast(
-                Builder->CreateAnd(getAccu(), ConstInt(1)),
-                Type::getInt1Ty(getGlobalContext()),
-                true
-            );
-
+            Accu = castToBool(Builder->CreateAnd(getAccu(), ConstInt(1)));
+            makeBoolToIntCast();
             break;
 
         case OFFSETREF:
@@ -992,10 +1013,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         // Fall through return
         case STOP:
         case RETURN: {
-            auto RetVal = getAccu();
-            if (Accu->getType() != getValType()) {
-                RetVal = Builder->CreateIntCast(Accu, getValType(), true);
-            }
+            auto RetVal = castToVal(getAccu());
             //Builder->CreateCall(getFunction("endCall"));
             Builder->CreateRet(RetVal); 
             break;
