@@ -121,3 +121,28 @@ void GenFunction::generateApplierFunction() {
     verifyFunction(*ApplierFunction);
 }
 
+/*
+ * Remove blocks which are not the first block
+ * And have no predecessors.
+ * IE : Dead code blocks
+ */
+void GenFunction::removeUnusedBlocks() {
+    int i = 0;
+    list<int> ToRemoveBlocks;
+    bool restart = false;
+    for (auto BlockP : Blocks) {
+        if (i > 0 && BlockP.second->PreviousBlocks.size() == 0) {
+            ToRemoveBlocks.push_front(BlockP.first);
+        }
+        i++;
+    }
+    for (auto BlockNum : ToRemoveBlocks) {
+        auto Block = Blocks[BlockNum];
+        for (auto NBlock : Block->NextBlocks) {
+            NBlock->PreviousBlocks.remove(Block);
+            if (NBlock->PreviousBlocks.size() == 0) restart = true;
+        }
+        Blocks.erase(BlockNum);
+    }
+    if (restart) removeUnusedBlocks();
+}

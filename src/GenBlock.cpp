@@ -22,14 +22,10 @@ extern "C" {
  * But need to be defined if we want to use Alloc_small
  */
 
-#define Setup_for_gc \
-  {}
-#define Restore_after_gc \
-  {}
-#define Setup_for_c_call \
-  {}
-#define Restore_after_c_call \
-  {}
+#define Setup_for_gc {}
+#define Restore_after_gc {}
+#define Setup_for_c_call {}
+#define Restore_after_c_call {}
 
 using namespace std;
 using namespace llvm;

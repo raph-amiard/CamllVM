@@ -137,6 +137,7 @@ llvm::ConstantInt* ConstInt(uint64_t val);
 // ================ GenFunction Declaration ================== //
 
 class GenFunction : public CodeGen {
+
     friend class GenModuleCreator;
     friend class GenModule;
     friend class GenBlock;
@@ -164,6 +165,7 @@ public:
     void Print(); 
     void PrintBlocks(); 
     llvm::Function* CodeGen();
+    void removeUnusedBlocks();
 };
 
 

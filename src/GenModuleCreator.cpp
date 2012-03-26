@@ -62,6 +62,7 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
     Module->MainFunction = new GenFunction(MAIN_FUNCTION_ID, Module);
     Module->MainFunction->Arity = 0;
     generateFunction(Module->MainFunction, removeDeadInstructions(&MainBlockInsts));
+    Module->MainFunction->removeUnusedBlocks();
 
     return Module;
 }
@@ -161,6 +162,8 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
             }
         }
     }
+
+    Function->removeUnusedBlocks();
 
 }
 
