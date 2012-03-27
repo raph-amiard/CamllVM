@@ -261,10 +261,11 @@ Value* GenBlock::castToInt(Value* Val) {
 
 Value* GenBlock::castToVal(Value* Val) {
     if (Val->getType() != getValType()) {
-        if (Function->BoolsAsVals.find(Val) != Function->BoolsAsVals.end())
-            return Function->BoolsAsVals[Accu];
-        else
-            return Builder->CreateIntCast(Accu, getValType(), true);
+        if (Function->BoolsAsVals.find(Val) != Function->BoolsAsVals.end()) {
+            return Function->BoolsAsVals[Val];
+        } else {
+            return Builder->CreateIntCast(Val, getValType(), true);
+        }
     } else
         return Val;
 }
@@ -336,7 +337,8 @@ void GenBlock::makeApply(size_t n, bool isTerminal) {
         }
 
         for (size_t i = 1; i <= n; i++) {
-            ArgsV.push_back(castToVal(getStackAt(n-i)));
+            auto Arg = castToVal(getStackAt(n-i));
+            ArgsV.push_back(Arg);
         }
 
         auto Call = Builder->CreateCall(FuncToCall, ArgsV);
