@@ -1,0 +1,13 @@
+/* lib/config.h.in.  Generated from autoconf/configure.ac by autoheader.  */
+
+/* debug mode */
+#undef DO_DEBUG
+
+/* gctorture mode */
+#undef GC_TORTURE
+
+
+
+
+
+

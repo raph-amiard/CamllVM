@@ -62,7 +62,7 @@ private:
 
 
     // List of PhiNodes to fill at the end of function codegen
-    std::list<std::pair<llvm::PHINode*, int>> PHINodes;
+    std::list<std::pair<llvm::PHINode*, int> > PHINodes;
     void handlePHINodes();
     void dumpStack();
     void genTermInst();
@@ -117,7 +117,7 @@ public:
     void addCallInfo();
 
     size_t StackOffset;
-    StackValue* _getStackAt(size_t n, GenBlock* StartBlock=nullptr);
+    StackValue* _getStackAt(size_t n, GenBlock* StartBlock=NULL);
     llvm::Value* getStackAt(size_t n);
     llvm::Value* stackPop();
 

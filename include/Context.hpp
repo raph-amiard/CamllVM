@@ -1,3 +1,6 @@
+#ifndef _CONTEXT_H_
+#define _CONTEXT_H_
+
 #include <Instructions.hpp>
 #include <CodeGen.hpp>
 #include <string>
@@ -24,3 +27,5 @@ public:
     void compile();
     void exec();
 };
+
+#endif

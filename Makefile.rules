@@ -1,0 +1,237 @@
+
+include $(LEVEL)/Makefile.config
+
+ifndef BOOSTRAP
+
+ifneq ($(MAKECMDGOALS),tidy)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(LEVEL)/.llvm-info
+endif
+endif
+endif
+
+RELEASE=$(LEVEL)/Release
+BINDIR=$(RELEASE)/bin
+dummy := $(shell test -d $(BINDIR) || mkdir $(BINDIR))
+LIBDIR=$(RELEASE)/lib
+BUILDDIR=.build
+OBJDIR=$(PROJ_SRC_ROOT)/obj
+dummy := $(shell test -d $(OBJDIR) || mkdir $(OBJDIR))
+SRCDIR=$(PROJ_SRC_ROOT)/src
+
+ifdef TOOL
+main_target=$(BINDIR)/$(TOOL) $(LIBDIR)/$(TOOL)-runtime.bc
+else
+ifdef MODULE
+main_target=$(LIBDIR)/$(MODULE)-content.bc
+endif
+endif
+
+OPTIM=-O3
+
+DEPEND_OPTIONS=-MMD -MP -MF "$(BUILDDIR)/$*.d.tmp" -MT "$(BUILDDIR)/$*.bc" -MT "$(BUILDDIR)/$*.d"
+DOM=then mv -f "$(BUILDDIR)/$*.d.tmp" "$(BUILDDIR)/$*.d"; else rm -f "$(BUILDDIR)/$*.d.tmp"; exit 1; fi
+
+Z3INCLUDE=$(PROJ_SRC_ROOT)/include
+INCLUDES=-I$(VMKIT_SRC_ROOT)/include -I$(VMKIT_SRC_ROOT)/lib/vmkit/MMTk/ -I$(LEVEL)/lib -I$(BUILDDIR) -I$(Z3INCLUDE)
+
+CFLAGS+=-O0 -Wall -Wno-unused `llvm-config --cflags` -std=c99 -Wno-tautological-compare -Wno-parentheses-equality $(INCLUDES) -ferror-limit=3 -fmacro-backtrace-limit=0
+CXXFLAGS+=-O0 -Wall -Wno-unused `llvm-config --cxxflags` $(INCLUDES) -ferror-limit=1 -fmacro-backtrace-limit=0 -fexceptions
+Z3CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I$(Z3INCLUDE) -std=c++0x
+Z3CC=clang++ $(Z3CCFLAGS) `llvm-config --cppflags` 
+CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I$(Z3INCLUDE)
+
+LDFLAGS=
+
+VMKIT_COMPONENTS = FinalMMTk J3 Classpath Vmkit VmkitCompiler CommonThread InlineMMTk 
+LINK_COMPONENTS = jit nativecodegen scalaropts instrumentation ipa ipo core bitreader 
+
+LIBS= `llvm-config --ldflags` \
+		$(patsubst %,$(VMKIT_OBJ_ROOT)/$(BuildMode)/lib/lib%.a,\
+					$(VMKIT_COMPONENTS)) \
+		-lz `llvm-config --libs $(LINK_COMPONENTS)` \
+        -lboost_program_options
+
+OCAMLPATH=$(PROJ_SRC_ROOT)/ocaml-3.12.1
+LIBPATH=$(OCAMLPATH)/byterun
+
+OBJECTS=$(OBJDIR)/Context.o $(OBJDIR)/GenBlock.o $(OBJDIR)/GenFunction.o $(OBJDIR)/GenModule.o $(OBJDIR)/GenModuleCreator.o $(OBJDIR)/Instructions.o $(OBJDIR)/SimpleContext.o $(OBJDIR)/Utils.o
+
+ifndef PROF
+PROF=.
+endif
+
+Echo=@echo [$(PROJECT_NAME) $(PROF)]:
+
+ifndef VERBOSE
+  Verb := @
+endif
+
+OBJ+=$(patsubst %,$(BUILDDIR)/%,$(GEN_OBJ)) \
+		 $(patsubst %.c,$(BUILDDIR)/%.bc,$(wildcard *.c)) \
+		 $(patsubst %.cc,$(BUILDDIR)/%.bc,$(wildcard *.cc)) \
+		 $(patsubst %.cpp,$(BUILDDIR)/%.bc,$(wildcard *.cpp))
+
+DEPENDENCIES=$(patsubst %.bc, %.d, $(OBJ))
+
+.PHONY: all all-subs bootstrap tidy clean distclean local-clean Z3 ocaml_runtime stdlib dbgstdlib z3clean
+.SECONDARY: 
+.SUFFIXES:
+
+
+all: Z3 all-subs $(main_target)
+
+all-subs clean-subs distclean-subs tidy-subs:
+ifdef SUB_DIRS
+	$(Verb) if [ x"$(SUB_DIRS)" != x ]; then for f in $(SUB_DIRS); do $(MAKE) -C $$f $(patsubst %-subs,%,$@) PROF=$(PROF)/$$f; done; fi;
+endif
+
+ifdef TOOL
+$(BINDIR)/$(TOOL): $(BUILDDIR)/$(TOOL)-binary.s $(BUILDDIR)/GenFrametables.bc
+	$(Echo) Linking $@
+	$(Verb) mkdir -p $(BINDIR) && \
+    clang++ $(LDFLAGS) -rdynamic -L$(LIBPATH) -o $@ $^ $(LIBS) $(OBJECTS) $(LIBPATH)/*.d.o $(LIBPATH)/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
+
+$(BUILDDIR)/GenFrametables.cc: $(BUILDDIR)/$(TOOL)-binary.s
+	$(Echo) Generating frame tables initializer for $<
+	$(Verb) echo '#include "vmkit/JIT.h"' > $@
+	$(Verb) cat $^ | grep __frametable | grep -v .glob | sed -e 's/_*\([^:]*\):/extern "C" vmkit::CompiledFrames \1;/' >> $@
+	$(Verb) echo "vmkit::CompiledFrames* frametables[] = {" >> $@
+	$(Verb) cat $^ | grep __frametable | grep -v .glob | sed -e 's/_*\([^:]*\):/\&\1,/' >> $@
+	$(Verb) echo "  NULL };" >> $@
+
+$(BUILDDIR)/%.s: $(BUILDDIR)/%.bc
+	$(Echo) "Compiling $@"
+	$(Verb) mkdir -p $(BUILDDIR) && llc $(LLC_OPT) $< -O3 -filetype=asm -jit-emit-debug -disable-cfi -disable-fp-elim -load=$(VMKIT_OBJ_ROOT)/$(BuildMode)/lib/StaticGCPrinter$(SHLIBEXT) -o $@
+
+$(LIBDIR)/%.bc: $(BUILDDIR)/%-no-opt.bc
+	$(Verb) cp $< $@
+
+$(BUILDDIR)/%.bc: $(BUILDDIR)/%-no-opt.bc
+	$(Echo) "Optimizing $@"
+	$(Verb) opt $< -disable-internalize -std-compile-opts -std-link-opts -inline -O3 -o $@
+
+$(BUILDDIR)/%-runtime-no-opt.bc: $(BUILDDIR)/%-binary-no-opt.bc $(LIBDIR)/PrepareCode.so
+	$(Echo) "Construct runtime version $@"
+#	$(Verb) opt $< -load=$(LIBDIR)/PrepareCode.so -disable-internalize --disable-opt -RIntrinsics -o $@
+	$(Verb) cp $< $@
+
+$(BUILDDIR)/%-binary-no-opt.bc: $(BUILDDIR)/%-content.bc $(LIBDIR)/PrepareCode.so
+	$(Echo) "Injecting GC in $@"
+	$(Verb) opt $< -load=$(LIBDIR)/PrepareCode.so -disable-internalize --disable-opt -StaticGCPass -o $@
+
+else
+
+$(LIBDIR)/%-content.bc: $(BUILDDIR)/%-content.bc $(BUILDDIR)/%-names.bc
+	$(Echo) "Linking library with names $@"
+	$(Verb) mkdir -p $(LIBDIR) && llvm-ld --disable-opt -disable-internalize -link-as-library $^ -o $@
+
+$(BUILDDIR)/%-names.c: $(BUILDDIR)/%-content.bc
+	$(Echo) "Generating $@"
+	$(Verb) mkdir -p $(BUILDDIR); touch $(BUILDDIR)/sym; 
+#	$(Verb) llvm-nm $< | grep -v "R__" | grep -E 'AnyStack|IntStack|Evaluator.*map' | sed 's/^.* \([^ ]*\)/"\1";/g' |  tee $(BUILDDIR)/sym | c++filt -n -p | sed 's/"\(.*\)";/const char* \1 = /' | sed 's/:/_/g'  | paste - $(BUILDDIR)/sym | egrep -v "~|vtable" > $@
+	$(Verb) touch $@
+	$(Verb) rm -f $(BUILDDIR)/sym
+
+endif
+
+$(BUILDDIR)/%-content.bc: $(OBJ) $(patsubst %,$(LIBDIR)/%-content.bc,$(MODULE_EXT))
+	$(Echo) "Linking library $@"
+	$(Verb) mkdir -p $(LIBDIR) && llvm-ld --disable-opt -disable-internalize -link-as-library $^ -o $@
+
+
+$(BUILDDIR)/module-name.c: Makefile $(LEVEL)/Makefile.rules $(LEVEL)/Makefile.config
+	$(Echo) Generating $@
+	$(Verb) mkdir -p $(BUILDDIR) && echo 'const char bc_module_path[] = "$(realpath $(LEVEL))/Release/lib/$(MODULE)-runtime.bc";' > $@
+
+
+## .bc rules
+
+$(BUILDDIR)/%.bc: %.cc Makefile $(LEVEL)/Makefile.rules $(LEVEL)/Makefile.config
+	$(Echo) Compiling 1 $<
+	$(Verb) mkdir -p $(BUILDDIR) && if clang++ $(CXXFLAGS) $(DEPEND_OPTIONS) -emit-llvm -c "$<" -o $@; $(DOM)
+	$(Verb) opt $@ -O3 -std-compile-opts -std-link-opts -disable-inlining -o $@
+
+$(BUILDDIR)/%.bc: $(BUILDDIR)/%.cc Makefile $(LEVEL)/Makefile.rules $(LEVEL)/Makefile.config
+	$(Echo) Compiling 2 $<
+	$(Verb) mkdir -p $(BUILDDIR) && if clang++ $(CXXFLAGS) $(DEPEND_OPTIONS) -emit-llvm -c "$<" -o "$@"; $(DOM)
+
+$(BUILDDIR)/%.bc: %.c Makefile $(LEVEL)/Makefile.rules $(LEVEL)/Makefile.config
+	$(Echo) Compiling $<
+	$(Verb) mkdir -p $(BUILDDIR) && if clang $(CFLAGS) $(DEPEND_OPTIONS) -emit-llvm -c "$<" -o "$@"; $(DOM)
+
+$(BUILDDIR)/%.bc: $(BUILDDIR)/%.c Makefile $(LEVEL)/Makefile.rules $(LEVEL)/Makefile.config
+	$(Echo) Compiling $<
+	$(Verb) mkdir -p $(BUILDDIR) && if clang $(CFLAGS) $(DEPEND_OPTIONS) -emit-llvm -c "$<" -o "$@"; $(DOM)
+
+
+$(LEVEL)/Makefile.config: $(LEVEL)/Makefile.config.in $(LEVEL)/configure
+	$(Echo) Reconfiguring project
+	$(Verb) cd $(LEVEL) && `cat config.log | grep "$$ ./configure" | cut -d'$$' -f2-`
+
+$(LEVEL)/configure: $(LEVEL)/autoconf/configure.ac $(LEVEL)/bootstrap.sh
+	$(Echo) Rebootstraping project
+	$(Verb) cd $(LEVEL) && ./bootstrap.sh
+
+$(LEVEL)/.llvm-info:
+	$(Echo) Importing informations from LLVM configuration
+	$(Verb) $(MAKE) BOOSTRAP=1
+
+##### Z3 rules ####
+Z3: $(OBJECTS) ocaml_runtime stdlib
+    
+$(OCAMLPATH)/config/Makefile $(OCAMLPATH)/config/m.h $(OCAMLPATH)/config/s.h:
+	cd $(OCAMLPATH) && ./configure
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(OCAMLPATH)/config/m.h $(OCAMLPATH)/config/s.h
+	$(Z3CC) -c -o $@ $<
+
+ocaml_runtime: $(OCAMLPATH)/config/Makefile $(OCAMLPATH)/config/m.h $(OCAMLPATH)/config/s.h
+	cd $(LIBPATH) && make && make libcamlrund.a && rm main.d.o;
+
+stdlib:
+	$(CSTDLIBCC) -S -emit-llvm -o $(BINDIR)/StdLib.ll $(SRCDIR)/StdLib/CStdLib.c
+	$(CSTDLIBCC) -std=c++0x -S -emit-llvm -o $(BINDIR)/ZamSimpleInterpreter.ll $(SRCDIR)/zsi/ZamSimpleInterpreter.cpp
+
+dbgstdlib:
+	$(CSTDLIBCC) -D STDDBG -S -emit-llvm -o $(BINDIR)/StdLib.ll $(SRCDIR)/StdLib/CStdLib.c
+
+z3clean:
+	$(Echo) Cleaning Z3 object files
+	$(Verb) rm $(OBJDIR)/* -f
+######
+
+tidy: tidy-subs
+	$(Echo) Cleaning temporary files
+	$(Verb) rm -f *~ \#*
+
+local-clean::
+	$(Echo) Cleaning compilation files
+	$(Verb) rm -Rf $(BUILDDIR)
+
+clean: clean-subs local-clean
+
+distclean: clean
+	$(Echo) Cleaning distribution
+	$(Verb) rm -Rf $(LEVEL)/.llvm-info
+	$(Verb) rm -Rf $(RELEASE)
+
+ifneq ($(MAKECMDGOALS),tidy)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
+-include $(DEPENDENCIES)
+endif
+endif
+endif
+
+else
+
+include $(VMKIT_OBJ_ROOT)/Makefile.common
+
+all::
+	$(Verb) echo BuildMode=$(BuildMode) >> $(LEVEL)/.llvm-info
+	$(Verb) echo SHLIBEXT=$(SHLIBEXT) >> $(LEVEL)/.llvm-info
+	$(Verb) rm -Rf Makefile.llvmbuild tools/llvm-config
+
+endif

@@ -30,6 +30,7 @@ deque<ZInstruction*>* removeDeadInstructions(deque<ZInstruction*>* Instructions)
 
 GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
 
+    cout << "generate\n";
     deque<ZInstruction*> QInstructions;
     deque<ZInstruction*> MainBlockInsts;
 
@@ -37,12 +38,12 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
     if (LastInst == 0) LastInst = OriginalInstructions->size() - 1;
     else if (LastInst < 0) LastInst = OriginalInstructions->size() + LastInst;
 
-    // Create a queue of all instructions
+    cout << "// Create a queue of all instructions\n";
     for (int i = FirstInst; i <= LastInst; i++) {
         QInstructions.push_back(OriginalInstructions->at(i));
     }
 
-    // Create functions. This will also remove the function's instructions
+    cout << "// Create functions. This will also remove the function's instructions\n";
     // from the queue, so that only the remaining instructions are added 
     // to MainBlockInsts
     while (QInstructions.size()) {
@@ -58,7 +59,7 @@ GenModule* GenModuleCreator::generate(int FirstInst, int LastInst) {
         }
     }
 
-    // Create the main function, based on the remaining instructions
+    cout << "// Create the main function, based on the remaining instructions\n";
     Module->MainFunction = new GenFunction(MAIN_FUNCTION_ID, Module);
     Module->MainFunction->Arity = 0;
     generateFunction(Module->MainFunction, removeDeadInstructions(&MainBlockInsts));

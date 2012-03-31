@@ -1,0 +1,17 @@
+# Set the name of the project here
+PROJECT_NAME := @PACKAGE_NAME@
+PROJ_VERSION := @PACKAGE_VERSION@
+
+PROJ_SRC_ROOT := $(subst //,/,@abs_top_srcdir@)
+
+# Set the root directory of this project's install prefix
+PROJ_INSTALL_ROOT := @prefix@
+
+VMKIT_SRC_ROOT = @vmkitsrc@
+VMKIT_OBJ_ROOT = @vmkitobj@
+
+ANTLR=@antlr@
+ANTLR_CFLAGS=@antlrccflags@
+ANTLR_LDFLAGS=@antlrcldflags@
+
+SHLIBEXT=@SHLIBEXT@

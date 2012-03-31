@@ -257,8 +257,8 @@ public:
                 std::cout << this->ClosureRecFns[i] << " ";
         
         if (this->isSwitch())
-            for (auto SwEnt : SwitchEntries)
-                std::cout << SwEnt << " ";
+            for (std::vector<int32_t>::iterator SwEnt = SwitchEntries.begin(); SwEnt != SwitchEntries.end(); ++SwEnt)
+                std::cout << *SwEnt << " ";
 
         std::cout << std::endl;
     }
