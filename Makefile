@@ -42,7 +42,7 @@ _main: $(OBJECTS) ocaml_runtime
 
 
 clean:
-	rm ${OBJ}/* -rf;
+	rm ${OBJ}/* -f;
 
 cleanall: clean
 	cd ${OCAMLPATH} && make clean;
