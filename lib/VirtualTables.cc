@@ -1,14 +1,14 @@
-#include "ToyVM.h"
-#include "ToyThread.h"
+#include "Z3VM.h"
+#include "Z3Thread.h"
 
-using namespace toy;
+using namespace z3;
 
-void ToyVM::tracer(word_t closure) {
+void Z3VM::tracer(word_t closure) {
 	//markAndTraceRoot(&ConstPool::True, closure);
 	//markAndTrace(this, &attributes, closure);
 	nyi();
 }
 
-void ToyThread::tracer(word_t closure) {
+void Z3Thread::tracer(word_t closure) {
 	nyi();
 }

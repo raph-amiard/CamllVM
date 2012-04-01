@@ -1,7 +1,7 @@
 // -*- c-basic-offset: 2 default-tab-width: 2 indent-tabs-mode: t -*-
 // vim: autoindent tabstop=2 noexpandtab shiftwidth=2 softtabstop=2
-#ifndef _TOY_VM_H_
-#define _TOY_VM_H_
+#ifndef _Z3_VM_H_
+#define _Z3_VM_H_
 
 #include <cstring>
 #include "util.h"
@@ -9,10 +9,10 @@
 #include "vmkit/VirtualMachine.h"
 #include <Context.hpp>
 
-namespace toy {
-	class ToyThread;
+namespace z3 {
+	class Z3Thread;
 
-	class ToyVM : public vmkit::VirtualMachine {
+	class Z3VM : public vmkit::VirtualMachine {
 	public:
 		int    argc;
 		char** argv;
@@ -24,15 +24,15 @@ namespace toy {
 		int			 EraseFirst;
 		int			 EraseLast;
 
-		ToyVM(vmkit::BumpPtrAllocator& Alloc, vmkit::CompiledFrames** frames);
+		Z3VM(vmkit::BumpPtrAllocator& Alloc, vmkit::CompiledFrames** frames);
 		
-		virtual ~ToyVM();
+		virtual ~Z3VM();
 		
 		virtual void runApplication(int argc, char** argv);
 
 		void initialise();
 	private:
-		static void mainStart(ToyThread*);
+		static void mainStart(Z3Thread*);
 		
 		virtual void tracer(word_t closure);
 

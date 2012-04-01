@@ -1,12 +1,12 @@
 // -*- c-basic-offset: 2 default-tab-width: 2 indent-tabs-mode: t -*-
 // vim: autoindent tabstop=2 noexpandtab shiftwidth=2 softtabstop=2
 
-#include "ToyVM.h"
-#include "ToyThread.h"
+#include "Z3VM.h"
+#include "Z3Thread.h"
 
-using namespace toy;
+using namespace z3;
 
-void ToyVM::initialise() {
+void Z3VM::initialise() {
 	this->ExecContent->init(this->FileName, this->EraseFrom, this->EraseFirst, this->EraseLast);
 	if (this->StepToReach > 1) this->ExecContent->generateMod();
 	if (this->StepToReach > 2) this->ExecContent->compile();
@@ -14,21 +14,21 @@ void ToyVM::initialise() {
 		exit();
 }
 
-ToyVM::ToyVM(vmkit::BumpPtrAllocator& Alloc, vmkit::CompiledFrames** frames) :
+Z3VM::Z3VM(vmkit::BumpPtrAllocator& Alloc, vmkit::CompiledFrames** frames) :
 	VirtualMachine(Alloc, frames) {
 	}
 
-ToyVM::~ToyVM() {
+Z3VM::~Z3VM() {
 }
 
-void ToyVM::runApplication(int argc, char** argv) {
+void Z3VM::runApplication(int argc, char** argv) {
 	this->argc = argc;
 	this->argv = argv;
-	mainThread = new ToyThread(this);
+	mainThread = new Z3Thread(this);
 	mainThread->start((void (*)(vmkit::Thread*))mainStart);
 }
 
-void ToyVM::mainStart(ToyThread* self) {
+void Z3VM::mainStart(Z3Thread* self) {
 	std::cout << "vm init\n";
 	self->vm()->initialise();
 	std::cout << "thread run\n";
@@ -37,52 +37,52 @@ void ToyVM::mainStart(ToyThread* self) {
 	self->vm()->exit();
 }
 
-void ToyVM::startCollection() {
+void Z3VM::startCollection() {
 	debug_printf("Starting a collection\n");
 }
 
-void ToyVM::endCollection() {
+void Z3VM::endCollection() {
 	debug_printf("Collection finished\n");
 }
 
-void ToyVM::scanWeakReferencesQueue(word_t closure) {
+void Z3VM::scanWeakReferencesQueue(word_t closure) {
 	nyi();
 }
 
-void ToyVM::scanSoftReferencesQueue(word_t closure) {
+void Z3VM::scanSoftReferencesQueue(word_t closure) {
 	nyi();
 }
 
-void ToyVM::scanPhantomReferencesQueue(word_t closure) {
+void Z3VM::scanPhantomReferencesQueue(word_t closure) {
 	nyi();
 }
 
-void ToyVM::scanFinalizationQueue(word_t closure) {
+void Z3VM::scanFinalizationQueue(word_t closure) {
 	nyi();
 }
 
-void ToyVM::addFinalizationCandidate(gc* obj) {
+void Z3VM::addFinalizationCandidate(gc* obj) {
 	nyi();
 }
 
-size_t ToyVM::getObjectSize(gc* obj) {
+size_t Z3VM::getObjectSize(gc* obj) {
 	nyi();
 	return 0;
 }
 
-const char* ToyVM::getObjectTypeName(gc* obj) {
+const char* Z3VM::getObjectTypeName(gc* obj) {
 	nyi();
 	return (char*)NULL;
 }
 
-void ToyVM::printMethod(vmkit::FrameInfo* FI, word_t ip, word_t addr) {
+void Z3VM::printMethod(vmkit::FrameInfo* FI, word_t ip, word_t addr) {
 	nyi();
 }
 
-void ToyVM::nullPointerException() {
+void Z3VM::nullPointerException() {
 	nyi();
 }
 
-void ToyVM::stackOverflowError() {
+void Z3VM::stackOverflowError() {
 	nyi();
 }

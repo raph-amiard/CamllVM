@@ -9,7 +9,7 @@
 //
 //===--------------------------------------------------------------------===//
 
-#include "ToyVM.h"
+#include "Z3VM.h"
 #include "util.h"
 #include "vmkit/JIT.h"
 #include <iostream>
@@ -21,7 +21,7 @@
 namespace po = boost::program_options;
 using namespace std;
 
-using namespace toy;
+using namespace z3;
 using namespace vmkit;
 
 extern "C" {
@@ -35,7 +35,7 @@ static void usage(po::options_description Options) {
 
 extern CompiledFrames* frametables[];
 
-void checkOpts(ToyVM* vm, int argc, char **argv) {
+void checkOpts(Z3VM* vm, int argc, char **argv) {
 	po::options_description Options("Options");
 	po::options_description Hidden("Hidden");
 	po::options_description All("All");
@@ -127,7 +127,7 @@ int main(int argc, char **argv){
 
 	// Create the allocator that will allocate the bootstrap loader and the JVM.
 	vmkit::BumpPtrAllocator Allocator;
-	ToyVM* vm = new(Allocator, "VM") ToyVM(Allocator, frametables);
+	Z3VM* vm = new(Allocator, "VM") Z3VM(Allocator, frametables);
 
 	checkOpts(vm, argc, argv);
 
