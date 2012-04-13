@@ -296,7 +296,11 @@ value makeBlock3(value tag, value Val1, value Val2, value Val3) {
 value makeBlock(value tag, value NbVals) {
     //printf("INTO MAKEBLOCK N, NbVals = %ld", NbVals);
     value block;
-    Alloc_small(block, NbVals, (tag_t)tag);
+    if (NbVals <= Max_young_wosize) {
+        Alloc_small(block, NbVals, (tag_t)tag);
+    } else {
+        block = caml_alloc_shr(NbVals, tag);
+    }
     return block;
 }
 
