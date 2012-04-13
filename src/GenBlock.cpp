@@ -378,7 +378,6 @@ void GenBlock::makePrimCall(size_t n, int32_t NumPrim) {
             Args.push_back(stackPop());
         ss << n;
     } else {
-        printf("IN TEH RIGHT BLOCKEN \n");
         push(getAccu());
 
         auto ArrayPtr = createArrayFromStack(n);
@@ -387,8 +386,6 @@ void GenBlock::makePrimCall(size_t n, int32_t NumPrim) {
         Args.push_back(ConstInt(n));
         ss << "n";
         for (size_t i = 0; i < n; i++) stackPop();
-        printf("ARGS SIZE : %ld\n", Args.size());
-        cout << ss.str() << endl;
     }
     makeCheckedCall(getFunction(ss.str()), Args);
     getAccu()->setName("PrimCallRes");
