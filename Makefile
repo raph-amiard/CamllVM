@@ -38,7 +38,7 @@ main: _main stdlib
 dbgmain: _main dbgstdlib
 
 _main: $(OBJECTS) ocaml_runtime 
-	${CC} ${LIBS} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
+	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses ${LIBS} `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
 clean:
