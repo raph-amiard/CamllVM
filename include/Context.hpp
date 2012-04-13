@@ -15,6 +15,7 @@ public:
     virtual void generateMod();
     virtual void compile();
     virtual void exec();
+    void writeModuleToFile(std::string name);
 
 };
 

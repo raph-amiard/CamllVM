@@ -89,6 +89,8 @@ Function* GenFunction::CodeGen() {
     //DEBUG(LlvmFunc->dump();)
     verifyFunction(*LlvmFunc);
 
+    LlvmFunc->setGC("shadow-stack");
+
     return LlvmFunc;
 }
 

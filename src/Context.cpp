@@ -26,6 +26,9 @@ extern "C" {
 #include <Instructions.hpp>
 #include <CodeGen.hpp>
 
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/CodeGen/GCs.h"
+
 using namespace std;
 
 static uintnat percent_free_init = Percent_free_def;
@@ -122,18 +125,24 @@ void Context::compile() {
             FuncP.second->LlvmFunc->dump();
         MainFunc->LlvmFunc->dump();
     )
-}
 
-void Context::exec() {
-    auto MainFunc = Mod->MainFunction;
-
-    /*
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
     }
     Mod->FPM->run(*MainFunc->LlvmFunc);
-    */
+}
+
+void Context::writeModuleToFile(string name) {
+    std::string ErrorInfo;
+    llvm::raw_fd_ostream fdostr(name.c_str(), ErrorInfo);
+    Mod->TheModule->print(fdostr, nullptr);
+}
+
+void Context::exec() {
+    llvm::linkShadowStackGC();
+
+    auto MainFunc = Mod->MainFunction;
 
     DEBUG(
         for (auto FuncP : Mod->Functions)

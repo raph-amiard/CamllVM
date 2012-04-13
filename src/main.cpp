@@ -32,12 +32,14 @@ int main(int argc, char** argv) {
     int EraseFirst, EraseLast;
     string FileName = "";
     int ModeContext = 0;
+    string OFilename;
 
     Options.add_options()
         ("help,h", "Show this help message.")
         //("verbose,v", "set verbose mode on")
         ("show-unimplemented,u", "Show unimplemented ZAM instructions.")
         ("step,s", po::value<int>(&StepToReach)->default_value(StepToReach), "Set step to reach:\n    1: Reading of instructions\n    2: CFG generation\n    3: llvm code generation\n    4: llvm code execution")
+        ("llvmout,o", po::value<string>(&OFilename)->default_value(""), "Output the compiled module to the specified ll file")
         ("from,f", po::value<int>(&PrintFrom)->default_value(PrintFrom), "Specify the code offset from which the generation will start.")
         ("erase,e", po::value< string >(&ToErase)->default_value(ToErase), "Specify a range of code offset to erase (2 values expected)\n    positive: from the begining\n    negative: from the end")
         ("verbose,v", "Show debug messages\n")
@@ -97,5 +99,9 @@ int main(int argc, char** argv) {
     ExecContent->init(FileName, PrintFrom, EraseFirst, EraseLast);
     if (StepToReach > 1) ExecContent->generateMod();
     if (StepToReach > 2) ExecContent->compile();
+    if (VM.count("llvmout") && OFilename.size() > 0) {
+        ExecContent->writeModuleToFile(OFilename);
+        exit(0);
+    }
     if (StepToReach > 3) ExecContent->exec();
 }
