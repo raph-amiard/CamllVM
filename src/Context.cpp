@@ -140,7 +140,8 @@ void Context::writeModuleToFile(string name) {
 }
 
 void Context::exec() {
-    llvm::linkShadowStackGC();
+    //llvm::linkShadowStackGC();
+	llvm::linkOcamlGC();
 
     auto MainFunc = Mod->MainFunction;
 
