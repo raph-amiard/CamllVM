@@ -86,10 +86,10 @@ Function* GenFunction::CodeGen() {
         this->generateApplierFunction();
 
     // Verify if the function is well formed
-    //DEBUG(LlvmFunc->dump();)
+    DEBUG(LlvmFunc->dump();)
+    //LlvmFunc->setGC("ocaml");
     verifyFunction(*LlvmFunc);
 
-    LlvmFunc->setGC("shadow-stack");
 
     return LlvmFunc;
 }

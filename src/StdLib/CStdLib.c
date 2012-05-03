@@ -36,6 +36,26 @@ typedef struct _Call {
 Call* RootCall = NULL;
 Call* CurrentCall = NULL;
 
+// ================ GC tEST ================== //
+
+struct FrameMap {
+  int32_t NumRoots;    //< Number of roots in stack frame.
+  int32_t NumMeta;     //< Number of metadata entries. May be < NumRoots.
+  const void *Meta[0]; //< Metadata for each root.
+};
+//
+struct StackEntry {
+  struct StackEntry *Next;    //< Link to next stack entry (the caller's).
+  const struct FrameMap *Map; //< Pointer to constant FrameMap.
+  void *Roots[0];      //< Stack roots (in-place array).
+};
+
+/// @brief The head of the singly-linked list of StackEntries. Functions push
+///        and pop onto this in their prologue and epilogue.
+/// 
+/// Since there is only a global list, this technique is not threadsafe.
+struct StackEntry *llvm_gc_root_chain;
+
 // ================ STDLIB Declaration ================== //
 
 value Env = 0;

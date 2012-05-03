@@ -12,6 +12,7 @@ CCFLAGS= -g -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE} -std=c++0x
 LIBS= -lboost_program_options
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
 CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I${Z3INCLUDE}
+LLVMPATH=/home/raph/build/llvm/Debug+Asserts/lib
 
 OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule.o $(OBJ)/GenModuleCreator.o $(OBJ)/Instructions.o $(OBJ)/SimpleContext.o $(OBJ)/main.o $(OBJ)/Utils.o
 
@@ -38,7 +39,7 @@ main: _main stdlib
 dbgmain: _main dbgstdlib
 
 _main: $(OBJECTS) ocaml_runtime 
-	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses ${LIBS} `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
+	${CC} -rdynamic -L${LLVMPATH} -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses ${LIBS} `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
 clean:

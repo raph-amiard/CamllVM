@@ -115,6 +115,8 @@ public:
     void debug(llvm::Value* DbgVal);
     void makeBoolToIntCast();
     void addCallInfo();
+    void makeGcRoot(llvm::Value* Val);
+    void makeMakeBlock(size_t BlockSize);
 
     size_t StackOffset;
     StackValue* _getStackAt(size_t n, GenBlock* StartBlock=nullptr);
@@ -130,6 +132,8 @@ public:
 
     // Function getters
     llvm::Function* getFunction(std::string FuncName);
+    llvm::Function* getGcRootFn();
+
 
 };
 
@@ -192,6 +196,7 @@ public:
 
     GenModule();
     void Print(); 
+    void initExecEngine();
 };
 
 

@@ -126,11 +126,15 @@ void Context::compile() {
         MainFunc->LlvmFunc->dump();
     )
 
+    Mod->initExecEngine();
+
+        /*
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
     }
     Mod->FPM->run(*MainFunc->LlvmFunc);
+    */
 }
 
 void Context::writeModuleToFile(string name) {
@@ -140,14 +144,15 @@ void Context::writeModuleToFile(string name) {
 }
 
 void Context::exec() {
-    llvm::linkShadowStackGC();
+    //llvm::linkOcamlGC();
+    //llvm::linkOcamlGCPrinter();
 
     auto MainFunc = Mod->MainFunction;
 
     DEBUG(
-        for (auto FuncP : Mod->Functions)
-            FuncP.second->LlvmFunc->dump();
-        MainFunc->LlvmFunc->dump();
+        cerr << "============== FULL MODULE ===============" << endl;
+        Mod->TheModule->dump();
+        cerr << "==========================================" << endl;
     )
 
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);

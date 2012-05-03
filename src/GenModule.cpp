@@ -34,9 +34,14 @@ GenModule::GenModule() {
         }
     }
     Builder = new IRBuilder<>(getGlobalContext());
+
+}
+
+void GenModule::initExecEngine() {
     TargetOptions TargOps;
     TargOps.GuaranteedTailCallOpt = 1;
     string ErrStr;
+
     ExecEngine = EngineBuilder(TheModule).setErrorStr(&ErrStr)
                                          .setTargetOptions(TargOps)
                                          .create();
@@ -57,8 +62,8 @@ GenModule::GenModule() {
     FPM->add(createGVNPass());
     FPM->add(createCFGSimplificationPass());
     FPM->add(createSCCPPass());
-
 }
+
 
 void GenModule::Print() {
     cout << " ============= Functions ============ " << endl << endl;

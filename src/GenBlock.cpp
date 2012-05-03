@@ -7,6 +7,7 @@
 #include "llvm/Target/TargetData.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Support/IRReader.h"
+#include "llvm/Intrinsics.h"
 
 extern "C" {
     #include <ocaml_runtime/mlvalues.h>
@@ -235,7 +236,7 @@ BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
 
-    //DEBUG(debug(ConstInt(this->Id));)
+    DEBUG(debug(ConstInt(this->Id));)
 
     for (auto Inst : this->Instructions)
         GenCodeForInst(Inst);
@@ -427,6 +428,9 @@ void GenBlock::makeClosure(int32_t NbFields, int32_t FnId) {
     this->Function->ClosuresFunctions[Accu] = CI;
 }
 
+void GenBlock::makeMakeBlock(size_t BlockSize) {
+}
+
 void GenBlock::makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds) {
 
     auto MakeClos = getFunction("makeClosure");
@@ -551,6 +555,20 @@ void GenBlock::debug(Value* DbgVal) {
     Builder->CreateCall(getFunction("debug"), DbgVal);
 }
 
+Function* GenBlock::getGcRootFn() {
+    return Intrinsic::getDeclaration(this->Function->Module->TheModule, Intrinsic::gcroot);
+}
+
+void GenBlock::makeGcRoot(Value* Val) {
+    /*
+    auto ChrPtrTy = Type::getInt8PtrTy(getGlobalContext());
+    auto ValAsPtr = Builder->CreateIntToPtr(Val, ChrPtrTy);
+    auto ValAlloca = Builder->CreateAlloca(ChrPtrTy);
+    Builder->CreateStore(ValAsPtr, ValAlloca);
+    Builder->CreateCall2(getGcRootFn(), ValAlloca, Constant::getNullValue(ChrPtrTy));
+    */
+}
+
 void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     Value *TmpVal;
@@ -562,7 +580,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         if (Accu) Accu->dump();
     )
 
-    //debug(ConstInt(Inst->OrigIdx));
+    debug(ConstInt(Inst->OrigIdx));
 
     switch (Inst->OpNum) {
 
@@ -826,12 +844,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Accu = Builder->CreateCall2(getFunction("makeBlock1"), 
                                         ConstInt(Inst->Args[0]), 
                                         getAccu(), "Block");
+            makeGcRoot(Accu);
             break;
         case MAKEBLOCK2:
             Accu = Builder->CreateCall3(getFunction("makeBlock2"), 
                                         ConstInt(Inst->Args[0]), 
                                         getAccu(), 
                                         getStackAt(0), "Block");
+            makeGcRoot(Accu);
             stackPop();
             break;
         case MAKEBLOCK3:
@@ -840,6 +860,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                                         getAccu(), 
                                         getStackAt(0), 
                                         getStackAt(1), "Block");
+            makeGcRoot(Accu);
             stackPop(); stackPop();
             break;
 
@@ -854,6 +875,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
                 Builder->CreateCall3(getFunction("setField"), Block, ConstInt(i), stackPop());
             }
             Accu = Block;
+            makeGcRoot(Accu);
             break;
         }
 
