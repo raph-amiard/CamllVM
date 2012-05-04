@@ -189,12 +189,8 @@ void GenBlock::dumpStack() {
 }
 
 Value* GenBlock::stackPop() {
-    auto Val = getStackAt(0);
-    if (Stack.size() == 0) {
-        StackOffset++;
-    } else {
-        Stack.pop_front();
-    }
+    auto Val = Builder->CreateLoad(Sp);
+    Sp = Builder->CreateGEP(Sp, ConstInt(+1));
     return Val;
 }
 
@@ -215,11 +211,12 @@ Value* GenBlock::getAccu(bool CreatePhi) {
 }
 
 void GenBlock::push(bool CreatePhi) { 
-    this->Stack.push_front(new StackValue(getAccu(CreatePhi)));
+    Sp = Builder->CreateGEP(Sp, ConstInt(-1));
+    Builder->CreateStore(Accu, Sp);
 }
 
 void GenBlock::acc(int n) { 
-    this->Accu = this->getStackAt(n); 
+    this->Accu = Builder->CreateGEP(Sp, ConstInt(n));
 }
 
 void GenBlock::envAcc(int n) { 
@@ -553,6 +550,7 @@ void GenBlock::debug(Value* DbgVal) {
 
 void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
+    Sp = Function->Module->Sp;
     Value *TmpVal;
 
     DEBUG(
@@ -792,7 +790,9 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         }
 
         case ASSIGN:
-            MutatedVals[_getStackAt(Inst->Args[0])] = new StackValue(getAccu());
+            TmpVal = Builder->CreateGEP(Sp, ConstInt(Inst->Args[0]));
+            Builder->CreateStore(TmpVal, getAccu());
+            Accu = ConstInt(Val_unit);
             break;
 
         case PUSHGETGLOBAL: push();
@@ -1099,6 +1099,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
     //DEBUG(cout << "Stack DIFF : " << StackSize - Stack.size() << endl;)
     DEBUG(cout << "Instruction generated ===  \n";)
+    Function->Module->Sp = Sp;
 }
 
 void GenBlock::Print() {

@@ -60,6 +60,13 @@ GenModule::GenModule() {
 
 }
 
+void GenModule::initStack() {
+    auto StackBottom = Builder->CreateAlloca(ArrayType::get(getValType(), StackSize));
+    // Sp-- for pushing and Sp++ for poping
+    Sp = Builder->CreateGEP(StackBottom, ConstInt(StackSize));
+    Sp->setName("Sp");
+}
+
 void GenModule::Print() {
     cout << " ============= Functions ============ " << endl << endl;
     for (auto FuncP : Functions) {

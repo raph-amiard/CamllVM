@@ -69,12 +69,13 @@ private:
 
     // Instructions to generate
     std::vector<ZInstruction*> Instructions;
-    
+
     // Stack handling
     std::deque<StackValue*> Stack;
     std::map<int, StackValue*> PrevStackCache;
     llvm::Value* Accu;
     llvm::Value* getAccu(bool CreatePhi=true);
+    llvm::Value* Sp;
 
     // Llvm block handling
     std::pair<llvm::BasicBlock*, llvm::BasicBlock*> addBlock();
@@ -190,7 +191,12 @@ public:
     llvm::IRBuilder<> * Builder;
     llvm::ExecutionEngine* ExecEngine;
 
+    // Explicit stack
+    llvm::Value * Sp;
+    int StackSize = 1000;
+
     GenModule();
+    void initStack();
     void Print(); 
 };
 
