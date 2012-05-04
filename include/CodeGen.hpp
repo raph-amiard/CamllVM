@@ -74,6 +74,7 @@ private:
     std::deque<StackValue*> Stack;
     std::map<int, StackValue*> PrevStackCache;
     llvm::Value* Accu;
+    llvm::Value* ExtraArgs;
     llvm::Value* getAccu(bool CreatePhi=true);
     llvm::Value* Sp;
 

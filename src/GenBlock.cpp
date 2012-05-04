@@ -87,7 +87,8 @@ std::string GenBlock::name() {
 }
 
 Value* GenBlock::getStackAt(size_t n) {
-    return _getStackAt(n, nullptr)->Val;
+    auto Ptr = Builder->CreateGEP(Sp, ConstInt(n));
+    return Builder->CreateLoad(Ptr);
 }
 
 StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
@@ -216,7 +217,8 @@ void GenBlock::push(bool CreatePhi) {
 }
 
 void GenBlock::acc(int n) { 
-    this->Accu = Builder->CreateGEP(Sp, ConstInt(n));
+    auto Ptr = Builder->CreateGEP(Sp, ConstInt(n));
+    Accu = Builder->CreateLoad(Ptr);
 }
 
 void GenBlock::envAcc(int n) { 
@@ -301,18 +303,7 @@ void GenBlock::makeCheckedCall(Value* Callee, ArrayRef<Value*> Args) {
 }
 
 Value* GenBlock::createArrayFromStack(size_t Size) {
-    auto Array = Builder->CreateAlloca(ArrayType::get(getValType(), Size));
-    Array->setName("Array");
-    for (size_t i = 1; i <= Size; i++) {
-        vector<Value*> GEPlist; 
-        GEPlist.push_back(ConstInt(0));
-        GEPlist.push_back(ConstInt(i-1));
-        stringstream ss; ss << "ApplyArrayEl" << i;
-        auto Ptr = Builder->CreateGEP(Array, GEPlist, ss.str());
-        auto Val = getStackAt(Size-i);
-        Builder->CreateStore(Val, Ptr);
-    }
-    return Builder->CreatePointerCast(Array, getValType()->getPointerTo(), "ArrayPtr");
+    return Builder->CreateGEP(Sp, ConstInt(1));
 }
 
 void GenBlock::makeApply(size_t n, bool isTerminal) {
@@ -591,12 +582,13 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             push(); 
             Accu = Builder->CreateCall(getFunction("getEnv"));
             push(); 
-            Accu = ConstInt(Val_unit);
+            Accu = ExtraArgs;
             push();
-            Accu = AccuSv;            
+            Accu = AccuSv;
             break;
         }
 
+        // TODO
         case PUSHTRAP: {
             auto Buf = Builder->CreateCall(getFunction("getNewBuffer"));
             auto SetJmpFunc = getFunction("__sigsetjmp");
@@ -621,12 +613,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         }
+        // TODO
         case POPTRAP: {
             //UnwindBlocks.pop_front();
             Builder->CreateCall(getFunction("removeExceptionContext"));
             stackPop();stackPop();stackPop();stackPop();
             break;
         }
+        // TODO
         case RAISE: {
             //Builder->CreateCall(getFunction("endCall"));
             Builder->CreateCall(getFunction("throwException"), getAccu());
