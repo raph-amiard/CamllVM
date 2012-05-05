@@ -81,7 +81,7 @@ deque<ZInstruction*>* GenModuleCreator::initFunction(deque<ZInstruction*>* Instr
     ZInstruction* FirstInst = Instructions->at(0);
     if (FirstInst->OpNum == GRAB) {
         Func->Arity = FirstInst->Args[0] + 1;
-        Instructions->pop_front();
+        //Instructions->pop_front();
     } else {
         Func->Arity = 1;
     }

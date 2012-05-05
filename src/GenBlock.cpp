@@ -308,50 +308,48 @@ Value* GenBlock::createArrayFromStack(size_t Size) {
 
 void GenBlock::makeApply(size_t n, bool isTerminal) {
 
-    auto Ci = Function->ClosuresFunctions.find(getAccu());
-    vector<Value*> ArgsV;
+    // preparing the stack
+    long i;
+    auto AccuSv = Accu;
+    vector<Value*> Args;
 
+    for (i=n; i>=0; i--)
+        Args.push_back(getStackAt(i));
 
-    if (Ci != Function->ClosuresFunctions.end() 
-            && Ci->second.LlvmFunc->arg_size() == n) {
+    Builder->CreateStore(Sp, valInt(ExtraArgs));
+    Accu = Builder->CreateCall(getFunction("getEnv"));
+    push();
+    Accu = ConstInt(Val_unit); //sp[n] = (value)pc;
+    push();
 
-        auto FuncToCall = Ci->second.LlvmFunc;
-        bool SameFunc = FuncToCall == this->Function->LlvmFunc;
-        Value* TmpEnv;
-
-        if (!SameFunc) {
-            TmpEnv = Builder->CreateCall(getFunction("getEnv"), "SavedEnv");
-            Builder->CreateCall(getFunction("setEnv"), getAccu());
-        }
-
-        for (size_t i = 1; i <= n; i++) {
-            auto Arg = castToVal(getStackAt(n-i));
-            ArgsV.push_back(Arg);
-        }
-
-        auto Call = Builder->CreateCall(FuncToCall, ArgsV);
-        Call->setCallingConv(CallingConv::Fast);
-        if (isTerminal) Call->setTailCall();
-        Accu = Call;
-
-        if (!SameFunc)
-            Builder->CreateCall(getFunction("setEnv"), TmpEnv);
-
-    } else {
-
-        auto ArrayPtr = createArrayFromStack(n);
-        getAccu()->setName("ApplyClosure");
-        ArgsV.push_back(getAccu());
-        ArgsV.push_back(ConstInt(n));
-        ArgsV.push_back(ArrayPtr);
-        makeCheckedCall(getFunction("apply"), ArgsV);
-        getAccu()->setName("ApplyRes");
-
+    for (i=0; i<n; i++) {
+        Accu = Args[i];
+        push();
     }
 
-    for (size_t i = 0; i < n; i++)
-        stackPop();
-    
+    Accu = AccuSv;
+
+    Builder->CreateCall(getFunction("SetEnv"), Accu);
+    ExtraArgs = ConstInt(n-1);
+
+    // call the function
+    auto Ci = Function->ClosuresFunctions.find(getAccu());
+
+    auto FuncToCall = Ci->second.LlvmFunc;
+    bool SameFunc = FuncToCall == this->Function->LlvmFunc;
+    Value* TmpEnv;
+
+    if (!SameFunc) {
+        TmpEnv = Builder->CreateCall(getFunction("getEnv"), "SavedEnv");
+        Builder->CreateCall(getFunction("setEnv"), getAccu());
+    }
+
+    auto Call = Builder->CreateCall(FuncToCall);
+    Call->setCallingConv(CallingConv::Fast);
+    if (isTerminal) Call->setTailCall();
+
+    if (!SameFunc)
+        Builder->CreateCall(getFunction("setEnv"), TmpEnv);
 }
 
 void GenBlock::makePrimCall(size_t n, int32_t NumPrim) {
@@ -578,12 +576,12 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSH: push(); break;
         case PUSH_RETADDR: {
             auto AccuSv = Accu;
-            Accu = ConstInt(Val_unit);
-            push(); 
+            Accu = valInt(ExtraArgs);
+            push();
             Accu = Builder->CreateCall(getFunction("getEnv"));
             push(); 
-            Accu = ExtraArgs;
-            push();
+            Accu = ConstInt(Val_unit);
+            push(); 
             Accu = AccuSv;
             break;
         }
@@ -947,6 +945,15 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHOFFSETCLOSURE2: push();
         case OFFSETCLOSURE2: makeOffsetClosure(2); break;
 
+        case GRAB: {
+            TmpVal = Builder->CreateICmpSGE(ExtraArgs, ConstInt(Inst->Args[0]));
+            BasicBlock* LBrBlock = BrBlock->LlvmBlocks.front();
+            BasicBlock* LNoBrBlock = NoBrBlock->LlvmBlocks.front();
+            Builder->CreateCondBr(TmpVal, LBrBlock, LNoBrBlock);
+            break;
+       }
+
+            
 
         // Object oriented Instructions
         case GETMETHOD: // Untested
@@ -976,12 +983,18 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case C_CALL5: makePrimCall(5, Inst->Args[0]); break;
         case C_CALLN: makePrimCall(Inst->Args[0], Inst->Args[1]); break;
 
-
         // Apply Instructions
+        /*
+        case APPLY:
+            ExtraArgs = Builder->CreateSub(ConstInt(Inst->Args[0]),
+                                           ConstInt(1));
+            //pc = Code_val(accu);
+            break;
+        */
         case APPLY1: makeApply(1); break;
         case APPLY2: makeApply(2); break;
         case APPLY3: makeApply(3); break;
-        case APPLY:  makeApply(Inst->Args[0]); stackPop(); stackPop(); stackPop(); break;
+        case APPLY:  makeApply(Inst->Args[0]); break;
         case APPTERM1: 
             makeApply(1, true); 
             //Builder->CreateCall(getFunction("endCall"));
@@ -1004,6 +1017,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         // Fall through return
+        // TODO
         case STOP:
         case RETURN: {
             auto RetVal = castToVal(getAccu());
