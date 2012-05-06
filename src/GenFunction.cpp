@@ -90,6 +90,7 @@ Function* GenFunction::CodeGen() {
     LlvmFunc->setGC("ocaml");
     verifyFunction(*LlvmFunc);
 
+	LlvmFunc->setGC("ocaml");
 
     return LlvmFunc;
 }
