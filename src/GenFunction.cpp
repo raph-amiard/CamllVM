@@ -87,7 +87,7 @@ Function* GenFunction::CodeGen() {
 
     // Verify if the function is well formed
     DEBUG(LlvmFunc->dump();)
-    //LlvmFunc->setGC("ocaml");
+    LlvmFunc->setGC("ocaml");
     verifyFunction(*LlvmFunc);
 
 

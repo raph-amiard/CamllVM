@@ -128,13 +128,11 @@ void Context::compile() {
 
     Mod->initExecEngine();
 
-        /*
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
     }
     Mod->FPM->run(*MainFunc->LlvmFunc);
-    */
 }
 
 void Context::writeModuleToFile(string name) {
@@ -144,8 +142,8 @@ void Context::writeModuleToFile(string name) {
 }
 
 void Context::exec() {
-    //llvm::linkOcamlGC();
-    //llvm::linkOcamlGCPrinter();
+    llvm::linkOcamlGC();
+    llvm::linkOcamlGCPrinter();
 
     auto MainFunc = Mod->MainFunction;
 

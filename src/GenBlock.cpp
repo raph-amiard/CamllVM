@@ -560,13 +560,14 @@ Function* GenBlock::getGcRootFn() {
 }
 
 void GenBlock::makeGcRoot(Value* Val) {
-    /*
     auto ChrPtrTy = Type::getInt8PtrTy(getGlobalContext());
-    auto ValAsPtr = Builder->CreateIntToPtr(Val, ChrPtrTy);
+    auto FirstBlock = Function->Blocks.begin()->second;
+    Builder->SetInsertPoint(FirstBlock->LlvmBlocks.front()->getFirstNonPHI());
     auto ValAlloca = Builder->CreateAlloca(ChrPtrTy);
+    Builder->SetInsertPoint(LlvmBlock);
+    auto ValAsPtr = Builder->CreateIntToPtr(Val, ChrPtrTy);
     Builder->CreateStore(ValAsPtr, ValAlloca);
     Builder->CreateCall2(getGcRootFn(), ValAlloca, Constant::getNullValue(ChrPtrTy));
-    */
 }
 
 void GenBlock::GenCodeForInst(ZInstruction* Inst) {
@@ -580,7 +581,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         if (Accu) Accu->dump();
     )
 
-    debug(ConstInt(Inst->OrigIdx));
+    //debug(ConstInt(Inst->OrigIdx));
 
     switch (Inst->OpNum) {
 

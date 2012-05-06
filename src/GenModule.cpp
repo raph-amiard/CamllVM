@@ -44,7 +44,9 @@ void GenModule::initExecEngine() {
 
     ExecEngine = EngineBuilder(TheModule).setErrorStr(&ErrStr)
                                          .setTargetOptions(TargOps)
+                                         .setOptLevel(CodeGenOpt::Aggressive)
                                          .create();
+
     if (!ExecEngine) {
         cerr << "Could not create ExecutionEngine: " << ErrStr << endl;
         exit(1);
