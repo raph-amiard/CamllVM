@@ -342,6 +342,7 @@ value primCall(value Prim) {
 value primCall1(value Prim, value Val1) {
   //printf("In primCall1, Prim number = %ld, Val1 = %p\n", Prim, (void*)Val1);
   Setup_for_c_call;
+  printf("Val 1 = %d\n");
   value Ret = Primitive(Prim)(Val1);
   Restore_after_c_call;
   //printf("PrimCall Result: %ld\n", Ret);
