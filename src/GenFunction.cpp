@@ -11,7 +11,6 @@ using namespace llvm;
 GenFunction::GenFunction(int Id, GenModule* Module) {
     this->Id = Id;
     this->Module = Module;
-    this->ApplierFunction = nullptr;
     this->LlvmFunc = nullptr;
 }
 
@@ -40,21 +39,20 @@ string GenFunction::name() {
 Function* GenFunction::CodeGen() {
 
     // Make function type
-    vector<Type*> ArgTypes(this->Arity, getValType());
-    auto FT = FunctionType::get(getValType(), ArgTypes, false);
+    auto FT = FunctionType::get(Type::getVoidTy(getGlobalContext()), false);
 
     // Create the llvm Function object
     LlvmFunc = Function::Create(FT, Function::ExternalLinkage, name(), Module->TheModule);
+    /*
     if (Id != 0) // is not main function
         LlvmFunc->setCallingConv(CallingConv::Fast);
+        */
 
-    // Put the function arguments on the stack of the first block
-    size_t i = 0;
-    for (auto AI = LlvmFunc->arg_begin(); AI != LlvmFunc->arg_end(); ++AI) {
-        stringstream s; s << "arg" << i;
-        FirstBlock->Stack.push_front(new StackValue(AI));
-        AI->setName(s.str());
-        i++;
+    // If not main function, initialize restart helper func
+    if (Id != MAIN_FUNCTION_ID) {
+        auto FT = FunctionType::get(Type::getVoidTy(getGlobalContext()), false);
+        RestartFunction = Function::Create(FT, Function::ExternalLinkage, name() + "_Restart", Module->TheModule);
+        this->generateRestartFunction();
     }
 
     //FirstBlock->addCallInfo();
@@ -69,56 +67,26 @@ Function* GenFunction::CodeGen() {
     }
 
 
-    // Handle phi nodes in reverse order, so that if phi are generated 
-    // in previous blocks they will be handled
-    bool StillHasPhiNodes = true;
-    while (StillHasPhiNodes) {
-        for (auto BIt = Blocks.rbegin(); BIt != Blocks.rend(); ++BIt)
-            BIt->second->handlePHINodes();
-
-        StillHasPhiNodes = false;
-        for (auto BIt = Blocks.rbegin(); BIt != Blocks.rend(); ++BIt) 
-            if (BIt->second->PHINodes.size()) StillHasPhiNodes = true;
-    }
-
-    // Generate Applier
-    if (this->Id != MAIN_FUNCTION_ID)
-        this->generateApplierFunction();
 
     // Verify if the function is well formed
-    //DEBUG(LlvmFunc->dump();)
+    LlvmFunc->dump();
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;
 }
 
-void GenFunction::generateApplierFunction() {
+void GenFunction::generateRestartFunction() {
+
     auto Builder = Module->Builder;
-
-    vector<Type*> ArgTypes(2, getValType());
-    auto FT = FunctionType::get(getValType(), ArgTypes, false);
-    ApplierFunction = Function::Create(FT, Function::ExternalLinkage, name() + "_Applier", Module->TheModule);
-
     auto Block1 = BasicBlock::Create(getGlobalContext());
     Builder->SetInsertPoint(Block1);
+    Builder->CreateCall(Module->getFunction("restart"));
+    Builder->CreateCall(LlvmFunc);
+    Builder->CreateRetVoid();
 
-    auto ArgsTab = ApplierFunction->arg_begin();
+    RestartFunction->getBasicBlockList().push_back(Block1);
 
-    vector<Value*> Args;
-    for (int i = 0; i < Arity; i++) {
-        Args.push_back(Builder->CreateCall2(
-            Module->TheModule->getFunction("getField"),
-            ArgsTab,
-            ConstInt(Arity - i - 1)
-        ));
-    }
-    auto Ret = Builder->CreateCall(this->LlvmFunc, ArrayRef<Value*>(Args));
-    Ret->setCallingConv(CallingConv::Fast);
-    Builder->CreateRet(Ret);
-
-    ApplierFunction->getBasicBlockList().push_back(Block1);
-
-    verifyFunction(*ApplierFunction);
+    verifyFunction(*RestartFunction);
 }
 
 /*

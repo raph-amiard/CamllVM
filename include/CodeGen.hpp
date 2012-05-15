@@ -63,8 +63,6 @@ private:
 
     // List of PhiNodes to fill at the end of function codegen
     std::list<std::pair<llvm::PHINode*, int>> PHINodes;
-    void handlePHINodes();
-    void dumpStack();
     void genTermInst();
 
     // Instructions to generate
@@ -89,7 +87,6 @@ private:
     llvm::Value* CondVal;
 
     std::map<StackValue*, StackValue*> MutatedVals;
-    StackValue* getMutatedValue(StackValue* Val);
 
     llvm::Value* createArrayFromStack(size_t Size);
 
@@ -108,18 +105,20 @@ public:
     void envAcc(int n);
     void push(bool CreatePhi=true);
     void makeApply(size_t n, bool isTerminal=false);
-    void makePrimCall(size_t n, int32_t NumPrim);
-    void makeClosure(int32_t NbFields, int32_t FnId);
-    void makeClosureRec(int32_t NbFuncs, int32_t NbFields, int32_t* FnIds);
     void makeOffsetClosure(int32_t n);
     void makeSetField(size_t n);
     void makeGetField(size_t n);
+    llvm::Value* makeCall0(std::string FuncName);
+    llvm::Value* makeCall1(std::string FuncName, llvm::Value* arg1);
+    llvm::Value* makeCall2(std::string FuncName, llvm::Value* arg1, llvm::Value* arg2);
+    llvm::Value* makeCall3(std::string FuncName, llvm::Value* arg1, llvm::Value* arg2, llvm::Value* arg3);
+    llvm::Value* makeCall4(std::string FuncName, llvm::Value* arg1, llvm::Value* arg2, llvm::Value* arg3, llvm::Value* arg4);
+    llvm::Value* makeCall5(std::string FuncName, llvm::Value* arg1, llvm::Value* arg2, llvm::Value* arg3, llvm::Value* arg4, llvm::Value* arg5);
     void debug(llvm::Value* DbgVal);
     void makeBoolToIntCast();
     void addCallInfo();
 
     size_t StackOffset;
-    StackValue* _getStackAt(size_t n, GenBlock* StartBlock=nullptr);
     llvm::Value* getStackAt(size_t n);
     llvm::Value* stackPop();
 
@@ -132,6 +131,7 @@ public:
 
     // Function getters
     llvm::Function* getFunction(std::string FuncName);
+    llvm::Value* getPtrToFunc(int32_t FnId);
 
 };
 
@@ -159,10 +159,10 @@ private:
 
     std::map<llvm::Value*, llvm::Value*> BoolsAsVals;
 
-    void generateApplierFunction();
+    void generateRestartFunction();
 
 public:
-    llvm::Function* ApplierFunction;
+    llvm::Function* RestartFunction;
     llvm::Function* LlvmFunc;
     GenFunction(int Id, GenModule* Module);
     std::string name();
@@ -192,12 +192,8 @@ public:
     llvm::IRBuilder<> * Builder;
     llvm::ExecutionEngine* ExecEngine;
 
-    // Explicit stack
-    llvm::Value * Sp;
-    int StackSize = 1000;
-
     GenModule();
-    void initStack();
+    llvm::Function* getFunction(std::string FuncName);
     void Print(); 
 };
 
