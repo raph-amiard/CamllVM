@@ -104,7 +104,6 @@ public:
     void acc(int n);
     void envAcc(int n);
     void push(bool CreatePhi=true);
-    void makeApply(size_t n, bool isTerminal=false);
     void makeOffsetClosure(int32_t n);
     void makeSetField(size_t n);
     void makeGetField(size_t n);
@@ -120,7 +119,6 @@ public:
 
     size_t StackOffset;
     llvm::Value* getStackAt(size_t n);
-    llvm::Value* stackPop();
 
     llvm::Value* intVal(llvm::Value* From);
     llvm::Value* valInt(llvm::Value* From);

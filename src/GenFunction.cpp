@@ -69,7 +69,6 @@ Function* GenFunction::CodeGen() {
 
 
     // Verify if the function is well formed
-    LlvmFunc->dump();
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;

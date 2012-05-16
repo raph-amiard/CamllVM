@@ -18,7 +18,7 @@ OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule
 all: main
 
 ocaml_runtime: ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
-	cd ${LIBPATH} && make && make libcamlrund.a && rm main.d.o;
+	cd ${LIBPATH} && make && make libcamlrun.a && make libcamlrund.a && rm main.d.o && rm main.o;
 
 ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h:
 	cd ${OCAMLPATH} && ./configure
@@ -39,6 +39,9 @@ dbgmain: _main dbgstdlib
 
 _main: $(OBJECTS) ocaml_runtime 
 	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) ${LIBPATH}/*.d.o ${LIBPATH}/prims.o -lcurses ${LIBS} `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
+
+_mainrelease: $(OBJECTS) ocaml_runtime 
+	${CC} -rdynamic -L${LIBPATH} -o ${BIN}/Z3 $(OBJECTS) `ls ${LIBPATH}/*.o | grep -v "pic.o" | grep -v "d.o"` -lcurses ${LIBS} `llvm-config --ldflags --libs bitreader asmparser core jit native ipo`
 
 
 clean:
