@@ -244,29 +244,24 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case CONST1: makeCall1("constInt", ConstInt(Val_int(1))); break;
         case CONST2: makeCall1("constInt", ConstInt(Val_int(2))); break;
         case CONST3: makeCall1("constInt", ConstInt(Val_int(3))); break;
-        case CONSTINT:
-            makeCall1("constInt", ConstInt(Val_int(Inst->Args[0])));
-            break;
+        case CONSTINT: makeCall1("constInt", ConstInt(Val_int(Inst->Args[0]))); break;
 
         case PUSHCONST0: push(); makeCall1("constInt", ConstInt(Val_int(0))); break;
         case PUSHCONST1: push(); makeCall1("constInt", ConstInt(Val_int(1))); break;
         case PUSHCONST2: push(); makeCall1("constInt", ConstInt(Val_int(2))); break;
         case PUSHCONST3: push(); makeCall1("constInt", ConstInt(Val_int(3))); break;
-        case PUSHCONSTINT: 
-            push(); 
-            makeCall1("constInt", ConstInt(Val_int(Inst->Args[0])));
-            break;
+        case PUSHCONSTINT: push(); makeCall1("constInt", ConstInt(Val_int(Inst->Args[0]))); break;
 
-        case POP: 
-            makeCall1("pop", ConstInt(Inst->Args[0]));
-            break;
+        case POP: makeCall1("pop", ConstInt(Inst->Args[0])); break;
 
         case PUSH: push(); break;
         case PUSH_RETADDR: makeCall0("pushRetAddr"); break; 
 
         // TODO
         case PUSHTRAP: {
-            auto Buf = Builder->CreateCall(getFunction("getNewBuffer")); auto SetJmpFunc = getFunction("__sigsetjmp"); auto JmpBufType = Function->Module->TheModule->getTypeByName("struct.__jmp_buf_tag")->getPointerTo();
+            auto Buf = Builder->CreateCall(getFunction("getNewBuffer")); 
+            auto SetJmpFunc = getFunction("__sigsetjmp"); 
+            auto JmpBufType = Function->Module->TheModule->getTypeByName("struct.__jmp_buf_tag")->getPointerTo();
             auto JmpBuf = Builder->CreateBitCast(Buf, JmpBufType);
             auto Const0 = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
             auto SetJmpRes = Builder->CreateCall2(SetJmpFunc, JmpBuf, Const0);
@@ -296,15 +291,15 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Builder->CreateRetVoid();
             break;
 
-        case ACC0: acc(0); break;
-        case ACC1: acc(1); break;
-        case ACC2: acc(2); break;
-        case ACC3: acc(3); break;
-        case ACC4: acc(4); break;
-        case ACC5: acc(5); break;
-        case ACC6: acc(6); break;
-        case ACC7: acc(7); break;
-        case ACC: acc(Inst->Args[0]); break;
+        case ACC0: debug(ConstInt(Inst->idx)); acc(0); break;
+        case ACC1: debug(ConstInt(Inst->idx)); acc(1); break;
+        case ACC2: debug(ConstInt(Inst->idx)); acc(2); break;
+        case ACC3: debug(ConstInt(Inst->idx)); acc(3); break;
+        case ACC4: debug(ConstInt(Inst->idx)); acc(4); break;
+        case ACC5: debug(ConstInt(Inst->idx)); acc(5); break;
+        case ACC6: debug(ConstInt(Inst->idx)); acc(6); break;
+        case ACC7: debug(ConstInt(Inst->idx)); acc(7); break;
+        case ACC:  debug(ConstInt(Inst->idx)); acc(Inst->Args[0]); break;
 
         case PUSHACC0: pushAcc(0); break;
         case PUSHACC1: pushAcc(1); break;
@@ -360,10 +355,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
         case PUSHGETGLOBAL: push();
         case GETGLOBAL: makeCall1("getGlobal", ConstInt(Inst->Args[0])); break;
-
-        case SETGLOBAL:
-            makeCall1("setGlobal", ConstInt(Inst->Args[0]));
-            break;
+        case SETGLOBAL: makeCall1("setGlobal", ConstInt(Inst->Args[0])); break;
 
         case PUSHGETGLOBALFIELD: push();
         case GETGLOBALFIELD: 
@@ -372,32 +364,15 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
 
         case PUSHATOM0: push();
-        case ATOM0:
-            makeCall1("getAtom", ConstInt(0));
-            break;
+        case ATOM0: makeCall1("getAtom", ConstInt(0)); break;
 
         case PUSHATOM: push();
-        case ATOM:
-            makeCall1("getAtom", ConstInt(Inst->Args[0]));
-            break;
+        case ATOM: makeCall1("getAtom", ConstInt(Inst->Args[0])); break;
 
-        case MAKEBLOCK1:
-            makeCall1("makeBlock1", ConstInt(Inst->Args[0]));
-            break;
-
-        case MAKEBLOCK2:
-            makeCall1("makeBlock2", ConstInt(Inst->Args[0]));
-            break;
-
-        case MAKEBLOCK3:
-            makeCall1("makeBlock3", ConstInt(Inst->Args[0]));
-            break;
-
-        case MAKEBLOCK: {
-            makeCall2("makeBlock", ConstInt(Inst->Args[1]), ConstInt(Inst->Args[0]));
-            break;
-        }
-
+        case MAKEBLOCK1: makeCall1("makeBlock1", ConstInt(Inst->Args[0])); break;
+        case MAKEBLOCK2: makeCall1("makeBlock2", ConstInt(Inst->Args[0])); break;
+        case MAKEBLOCK3: makeCall1("makeBlock3", ConstInt(Inst->Args[0])); break;
+        case MAKEBLOCK: makeCall2("makeBlock", ConstInt(Inst->Args[1]), ConstInt(Inst->Args[0])); break;
         case MAKEFLOATBLOCK: makeCall1("makeFloatBlock", ConstInt(Inst->Args[0])); break;
 
         case SETFIELD0: makeSetField(0); break;
@@ -438,8 +413,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case PUSHOFFSETCLOSUREM2: push();
         case OFFSETCLOSUREM2: makeCall1("offsetClosure", ConstInt(-2)); break;
 
-        case PUSHOFFSETCLOSURE0:
-            push();
+        case PUSHOFFSETCLOSURE0: push();
         case OFFSETCLOSURE0: makeCall1("offsetClosure", ConstInt(0)); break;
 
         case PUSHOFFSETCLOSURE2: push();
@@ -482,35 +456,69 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case C_CALL5: makeCall1("c_call5", ConstInt(Inst->Args[0])); break;
         case C_CALLN: makeCall2("c_calln", ConstInt(Inst->Args[0]), ConstInt(Inst->Args[1])); break;
 
-        case APPLY1: makeCall0("apply1"); break;
-        case APPLY2: makeCall0("apply2"); break;
-        case APPLY3: makeCall0("apply3"); break;
-        case APPLY: makeCall1("apply", ConstInt(Inst->Args[0])); break;
+        case APPLY1: Builder->CreateCall(makeCall0("apply1"))->setCallingConv(CallingConv::Fast); break;
+        case APPLY2: Builder->CreateCall(makeCall0("apply2"))->setCallingConv(CallingConv::Fast); break;
+        case APPLY3: Builder->CreateCall(makeCall0("apply3"))->setCallingConv(CallingConv::Fast); break;
+        case APPLY: Builder->CreateCall(makeCall1("apply", ConstInt(Inst->Args[0])))->setCallingConv(CallingConv::Fast); break;
 
-        case APPTERM1: 
-            makeCall1("appterm1", ConstInt(Inst->Args[0])); 
+        case APPTERM1: {
+            auto Func = makeCall1("appterm1", ConstInt(Inst->Args[0])); 
+            auto Call = Builder->CreateCall(Func);
+            Call->setCallingConv(CallingConv::Fast);
+            Call->setTailCall();
             Builder->CreateRetVoid();
             break;
-        case APPTERM2: 
-            makeCall1("appterm2", ConstInt(Inst->Args[0])); 
+        }
+        case APPTERM2: {
+            auto Func = makeCall1("appterm2", ConstInt(Inst->Args[0])); 
+            auto Call = Builder->CreateCall(Func);
+            Call->setCallingConv(CallingConv::Fast);
+            Call->setTailCall();
             Builder->CreateRetVoid();
             break;
-        case APPTERM3: 
-            makeCall1("appterm3", ConstInt(Inst->Args[0])); 
+        }
+        case APPTERM3: {
+            auto Func = makeCall1("appterm3", ConstInt(Inst->Args[0])); 
+            auto Call = Builder->CreateCall(Func);
+            Call->setCallingConv(CallingConv::Fast);
+            Call->setTailCall();
             Builder->CreateRetVoid();
             break;
-        case APPTERM: 
-            makeCall2("appterm", ConstInt(Inst->Args[0]), ConstInt(Inst->Args[1])); 
+        }
+        case APPTERM: {
+            auto Func = makeCall2("appterm", ConstInt(Inst->Args[0]), ConstInt(Inst->Args[1])); 
+            auto Call = Builder->CreateCall(Func);
+            Call->setCallingConv(CallingConv::Fast);
+            Call->setTailCall();
             Builder->CreateRetVoid();
             break;
+        }
 
         // Fall through return
         // TODO
         case STOP:
-        case RETURN:
-            makeCall1("handleReturn", ConstInt(Inst->Args[0]));
             Builder->CreateRetVoid();
             break;
+        case RETURN: {
+            auto Func = makeCall1("handleReturn", ConstInt(Inst->Args[0]));
+            auto BoolVal = Builder->CreatePtrToInt(Func, Type::getInt1Ty(getGlobalContext()));
+            auto Blocks = addBlock();
+            auto BlockInvoke = Blocks.second;
+            Blocks = addBlock();
+            auto BlockReturn = Blocks.second;
+            Builder->CreateCondBr(BoolVal, BlockInvoke, BlockReturn);
+
+            Builder->SetInsertPoint(BlockInvoke);
+            auto Call = Builder->CreateCall(Func);
+            Call->setCallingConv(CallingConv::Fast);
+            Call->setTailCall();
+            Builder->CreateRetVoid();
+
+            Builder->SetInsertPoint(BlockReturn);
+            Builder->CreateRetVoid();
+
+            break;
+        }
 
         case BRANCH:{
             BasicBlock* LBrBlock = BrBlock->LlvmBlock;
@@ -541,31 +549,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         }
 
 
-        case BEQ:
-            TmpVal = Builder->CreateICmpEQ(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BNEQ:
-            TmpVal = Builder->CreateICmpNE(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BLTINT:
-            TmpVal = Builder->CreateICmpSLT(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BLEINT:
-            TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BGTINT:
-            TmpVal = Builder->CreateICmpSGT(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BGEINT:
-            TmpVal = Builder->CreateICmpSGE(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BULTINT:
-            TmpVal = Builder->CreateICmpULT(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-        case BUGEINT:
-            TmpVal = Builder->CreateICmpUGE(ConstInt(Val_int(Inst->Args[0])), getAccu());
-            goto makebr;
-
+        case BEQ: TmpVal = Builder->CreateICmpEQ(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BNEQ: TmpVal = Builder->CreateICmpNE(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BLTINT: TmpVal = Builder->CreateICmpSLT(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BLEINT: TmpVal = Builder->CreateICmpSLE(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BGTINT: TmpVal = Builder->CreateICmpSGT(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BGEINT: TmpVal = Builder->CreateICmpSGE(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BULTINT: TmpVal = Builder->CreateICmpULT(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
+        case BUGEINT: TmpVal = Builder->CreateICmpUGE(ConstInt(Val_int(Inst->Args[0])), getAccu()); goto makebr;
 
         makebr: {
             BasicBlock* LBrBlock = BrBlock->LlvmBlocks.front();

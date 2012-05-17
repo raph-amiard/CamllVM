@@ -513,17 +513,19 @@ void restart() {
         StackPointer = caml_extern_sp; \
     } 
 
-void apply(value N) {
+typedef void(*FunctionTy)(void);
+
+FunctionTy apply(value N) {
     IFDBG(printf("APPLY\n");)
     extra_args = N -1;
     IFDBG(printf("IN APPLY\n");)
     IFDBG(printf("{{ EXTRA ARGS = %ld\n", extra_args);)
     Env = Accu;
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void apply1() {
+FunctionTy apply1() {
     int cnb = callnb++;
     IFDBG(printf("IN APPLY 1 %d\n", cnb);)
     value arg1 = StackPointer[0];
@@ -534,12 +536,12 @@ void apply1() {
     Env = Accu;
     extra_args = 0;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
     IFDBG(printf("OUT APPLY 1 %d , result : %p\n", cnb, (void*)Accu);)
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void apply2() {
+FunctionTy apply2() {
     IFDBG(printf("APPLY2\n");)
     value arg1 = StackPointer[0];
     value arg2 = StackPointer[1];
@@ -551,11 +553,11 @@ void apply2() {
     Env = Accu;
     extra_args = 1;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void apply3() {
+FunctionTy apply3() {
     value arg1 = StackPointer[0];
     value arg2 = StackPointer[1];
     value arg3 = StackPointer[2];
@@ -568,11 +570,11 @@ void apply3() {
     Env = Accu;
     extra_args = 2;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void appterm(value nargs, value slotsize) {
+FunctionTy appterm(value nargs, value slotsize) {
     value * newsp;
     int i;
     /* Slide the nargs bottom words of the current frame to the top
@@ -583,21 +585,21 @@ void appterm(value nargs, value slotsize) {
     Env = Accu;
     extra_args += nargs - 1;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void appterm1(value slotsize) {
+FunctionTy appterm1(value slotsize) {
     value arg1 = StackPointer[0];
     StackPointer = StackPointer + slotsize - 1;
     StackPointer[0] = arg1;
     Env = Accu;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void appterm2(value slotsize) {
+FunctionTy appterm2(value slotsize) {
     value arg1 = StackPointer[0];
     value arg2 = StackPointer[1];
     StackPointer = StackPointer + slotsize - 2;
@@ -606,11 +608,11 @@ void appterm2(value slotsize) {
     Env = Accu;
     extra_args += 1;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void appterm3(value slotsize) {
+FunctionTy appterm3(value slotsize) {
     value arg1 = StackPointer[0];
     value arg2 = StackPointer[1];
     value arg3 = StackPointer[2];
@@ -621,23 +623,26 @@ void appterm3(value slotsize) {
     Env = Accu;
     extra_args += 2;
     CHECK_STACKS();
-    void (*CodePtr)() = (void(*)())Code_val(Accu);
-    CodePtr();
+    FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+    return CodePtr;
 }
 
-void handleReturn(value stsz) {
+FunctionTy handleReturn(value stsz) {
+    printf("IN HANDLE RETURN\n");
     StackPointer += stsz;
     if (extra_args > 0) {
         extra_args--;
         Env = Accu;
-        void (*CodePtr)() = (void(*)())Code_val(Accu);
-        CodePtr();
+        FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
+        printf("PARTIAL APP\n");
+        return CodePtr;
     } else {
         // No partial application
         Env = StackPointer[1];
         extra_args = Long_val(StackPointer[2]);
         StackPointer += 3;
-        return;
+        printf("NO PARTIAL APP\n");
+        return NULL;
     }
 }
 

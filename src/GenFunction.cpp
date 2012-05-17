@@ -43,10 +43,9 @@ Function* GenFunction::CodeGen() {
 
     // Create the llvm Function object
     LlvmFunc = Function::Create(FT, Function::ExternalLinkage, name(), Module->TheModule);
-    /*
+    
     if (Id != 0) // is not main function
         LlvmFunc->setCallingConv(CallingConv::Fast);
-        */
 
     // If not main function, initialize restart helper func
     if (Id != MAIN_FUNCTION_ID) {
@@ -84,6 +83,7 @@ void GenFunction::generateRestartFunction() {
     Builder->CreateRetVoid();
 
     RestartFunction->getBasicBlockList().push_back(Block1);
+    RestartFunction->setCallingConv(CallingConv::Fast);
 
     verifyFunction(*RestartFunction);
 }
