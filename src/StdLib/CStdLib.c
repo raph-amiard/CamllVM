@@ -231,6 +231,7 @@ void removeExceptionContext() {
 void printCallChain(Call* CCall, int depth);
 
 void throwException(value ExcVal) {
+    IFDBG(printf("OCamL THROW !!!!!!!!!!!!!!!!\n");)
     if (!NextExceptionContext) exit(0);
     caml_exn_bucket = ExcVal;
     siglongjmp(NextExceptionContext->JmpBuf.buf, 1);
@@ -372,6 +373,7 @@ void acc(value N) {
 }
 
 void envAcc(value N) {
+    IFDBG(printf("In envacc, Env = %p\n", (void*)Env);)
     Accu = Field(Env, N);
     IFDBG(printf("ENVACC %ld: %p\n", N, (void*)Accu);)
 }
@@ -644,11 +646,17 @@ FunctionTy handleReturn(value stsz) {
 }
 
 void pushTrap() {
-      StackPointer -= 4;
-      Trap_link(StackPointer) = caml_trapsp;
-      StackPointer[2] = Env;
-      StackPointer[3] = Val_long(extra_args);
-      caml_trapsp = StackPointer;
+    StackPointer -= 4;
+    Trap_link(StackPointer) = caml_trapsp;
+    StackPointer[2] = Env;
+    IFDBG(printf("IN PUSHTRAP, ENV = %p\n", (void*)Env);)
+    StackPointer[3] = Val_long(extra_args);
+    caml_trapsp = StackPointer;
+}
+
+void popTrap() {
+    caml_trapsp = Trap_link(StackPointer);
+    StackPointer += 4;
 }
 
 void c_call1(value prim) {

@@ -17,16 +17,6 @@ extern "C" {
 #include <stdexcept>
 #include <cstdio>
 
-/* GC interface 
- * Those macros are empty for the moment 
- * But need to be defined if we want to use Alloc_small
- */
-
-#define Setup_for_gc {}
-#define Restore_after_gc {}
-#define Setup_for_c_call {}
-#define Restore_after_c_call {}
-
 using namespace std;
 using namespace llvm;
 
@@ -92,9 +82,7 @@ void GenBlock::push(bool CreatePhi) { makeCall0("push"); }
 
 void GenBlock::acc(int n) {makeCall1("acc", ConstInt(n));}
 
-void GenBlock::envAcc(int n) { 
-    makeCall1("envAcc", ConstInt(n));
-}
+void GenBlock::envAcc(int n) { makeCall1("envAcc", ConstInt(n)); }
 
 void GenBlock::pushAcc(int n) { push(); acc(n); }
 
@@ -102,7 +90,7 @@ BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
 
-    DEBUG(debug(ConstInt(this->Id));)
+    //DEBUG(debug(ConstInt(this->Id));)
 
     if (Function->Id == MAIN_FUNCTION_ID && this->PreviousBlocks.size() == 0)
         makeCall0("init");
@@ -283,7 +271,7 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
 
         case POPTRAP:
             makeCall0("removeExceptionContext");
-            makeCall1("pop", ConstInt(4));
+            makeCall0("popTrap");
             break;
 
         case RAISE: 
