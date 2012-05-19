@@ -79,7 +79,9 @@ void GenFunction::generateRestartFunction() {
     auto Block1 = BasicBlock::Create(getGlobalContext());
     Builder->SetInsertPoint(Block1);
     Builder->CreateCall(Module->getFunction("restart"));
-    Builder->CreateCall(LlvmFunc);
+    auto Call = Builder->CreateCall(LlvmFunc);
+    Call->setCallingConv(CallingConv::Fast);
+    Call->setTailCall();
     Builder->CreateRetVoid();
 
     RestartFunction->getBasicBlockList().push_back(Block1);

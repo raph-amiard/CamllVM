@@ -291,15 +291,15 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             Builder->CreateRetVoid();
             break;
 
-        case ACC0: debug(ConstInt(Inst->idx)); acc(0); break;
-        case ACC1: debug(ConstInt(Inst->idx)); acc(1); break;
-        case ACC2: debug(ConstInt(Inst->idx)); acc(2); break;
-        case ACC3: debug(ConstInt(Inst->idx)); acc(3); break;
-        case ACC4: debug(ConstInt(Inst->idx)); acc(4); break;
-        case ACC5: debug(ConstInt(Inst->idx)); acc(5); break;
-        case ACC6: debug(ConstInt(Inst->idx)); acc(6); break;
-        case ACC7: debug(ConstInt(Inst->idx)); acc(7); break;
-        case ACC:  debug(ConstInt(Inst->idx)); acc(Inst->Args[0]); break;
+        case ACC0:  acc(0); break;
+        case ACC1:  acc(1); break;
+        case ACC2:  acc(2); break;
+        case ACC3:  acc(3); break;
+        case ACC4:  acc(4); break;
+        case ACC5:  acc(5); break;
+        case ACC6:  acc(6); break;
+        case ACC7:  acc(7); break;
+        case ACC:   acc(Inst->Args[0]); break;
 
         case PUSHACC0: pushAcc(0); break;
         case PUSHACC1: pushAcc(1); break;
@@ -456,10 +456,22 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
         case C_CALL5: makeCall1("c_call5", ConstInt(Inst->Args[0])); break;
         case C_CALLN: makeCall2("c_calln", ConstInt(Inst->Args[0]), ConstInt(Inst->Args[1])); break;
 
-        case APPLY1: Builder->CreateCall(makeCall0("apply1"))->setCallingConv(CallingConv::Fast); break;
-        case APPLY2: Builder->CreateCall(makeCall0("apply2"))->setCallingConv(CallingConv::Fast); break;
-        case APPLY3: Builder->CreateCall(makeCall0("apply3"))->setCallingConv(CallingConv::Fast); break;
-        case APPLY: Builder->CreateCall(makeCall1("apply", ConstInt(Inst->Args[0])))->setCallingConv(CallingConv::Fast); break;
+        case APPLY1: {
+            Builder->CreateCall(makeCall0("apply1"))->setCallingConv(CallingConv::Fast);
+            break;
+        }
+        case APPLY2: {
+            Builder->CreateCall(makeCall0("apply2"))->setCallingConv(CallingConv::Fast);
+            break;
+        }
+        case APPLY3: {
+            Builder->CreateCall(makeCall0("apply3"))->setCallingConv(CallingConv::Fast);
+            break;
+        }
+        case APPLY: {
+            Builder->CreateCall(makeCall1("apply", ConstInt(Inst->Args[0])))->setCallingConv(CallingConv::Fast);
+            break;
+        }
 
         case APPTERM1: {
             auto Func = makeCall1("appterm1", ConstInt(Inst->Args[0])); 
@@ -501,7 +513,8 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             break;
         case RETURN: {
             auto Func = makeCall1("handleReturn", ConstInt(Inst->Args[0]));
-            auto BoolVal = Builder->CreatePtrToInt(Func, Type::getInt1Ty(getGlobalContext()));
+            auto IntPtr = Builder->CreatePtrToInt(Func, getValType());
+            auto BoolVal = Builder->CreateICmpNE(IntPtr, ConstInt(0), "BranchRet");
             auto Blocks = addBlock();
             auto BlockInvoke = Blocks.second;
             Blocks = addBlock();

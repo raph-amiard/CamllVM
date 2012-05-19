@@ -628,20 +628,17 @@ FunctionTy appterm3(value slotsize) {
 }
 
 FunctionTy handleReturn(value stsz) {
-    printf("IN HANDLE RETURN\n");
     StackPointer += stsz;
     if (extra_args > 0) {
         extra_args--;
         Env = Accu;
         FunctionTy CodePtr = (FunctionTy)Code_val(Accu);
-        printf("PARTIAL APP\n");
         return CodePtr;
     } else {
         // No partial application
         Env = StackPointer[1];
         extra_args = Long_val(StackPointer[2]);
         StackPointer += 3;
-        printf("NO PARTIAL APP\n");
         return NULL;
     }
 }
