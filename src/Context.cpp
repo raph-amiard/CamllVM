@@ -117,16 +117,6 @@ void Context::compile() {
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
 
-    DEBUG(
-        for (auto FuncP : Mod->Functions)
-            FuncP.second->LlvmFunc->dump();
-        MainFunc->LlvmFunc->dump();
-    )
-}
-
-void Context::exec() {
-    auto MainFunc = Mod->MainFunction;
-
     Mod->PM->run(*Mod->TheModule);
     for (auto& F: Mod->TheModule->getFunctionList()) {
         Mod->FPM->run(F);
@@ -137,7 +127,13 @@ void Context::exec() {
         for (auto FuncP : Mod->Functions)
             FuncP.second->LlvmFunc->dump();
         MainFunc->LlvmFunc->dump();
+    )
+}
 
+void Context::exec() {
+    auto MainFunc = Mod->MainFunction;
+
+    DEBUG(
         for (auto FuncP : Mod->Functions) {
             void *Ptr = Mod->ExecEngine->getPointerToFunction(FuncP.second->LlvmFunc);
             cout << "Function " << FuncP.second->name() << " : " << Ptr << endl;
