@@ -178,15 +178,16 @@ void setGlobal(value Idx) {
 typedef struct _JmpBufList {
     struct _JmpBufList* Next;
     struct longjmp_buffer JmpBuf;
-    value Env;
 } JmpBufList;
 
 JmpBufList* NextExceptionContext = NULL;
 
+JmpBufList Buffers[2048];
+size_t CurrentBufferIndex = 0;
+
 char* getNewBuffer() {
-    JmpBufList* NewContext = malloc(sizeof(JmpBufList));
+    JmpBufList* NewContext = &Buffers[CurrentBufferIndex++];
     NewContext->Next = NextExceptionContext;
-    NewContext->Env = Env;
     NextExceptionContext = NewContext;
     caml_external_raise = &NewContext->JmpBuf;
     return (char*)NewContext->JmpBuf.buf;
@@ -224,7 +225,7 @@ value addExceptionContext() {
 void removeExceptionContext() {
     JmpBufList* Context = NextExceptionContext;
     NextExceptionContext = Context->Next;
-    free(Context);
+    CurrentBufferIndex--;
     caml_external_raise = &NextExceptionContext->JmpBuf;
 }
 
