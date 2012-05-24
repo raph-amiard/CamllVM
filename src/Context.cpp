@@ -147,9 +147,6 @@ void Context::exec(bool PrintTime) {
     void (*FP)() = (void (*)())(intptr_t)FPtr;
 
     if (PrintTime) {
-        // redirect stdout and stderr to /dev/null
-        if ( freopen("/dev/null", "w", stdout) == NULL) exit(2);
-        if ( freopen("/dev/null", "w", stderr) == NULL) exit(2);
         gettimeofday(&Begin, NULL);
     }
 
@@ -159,8 +156,6 @@ void Context::exec(bool PrintTime) {
         gettimeofday(&End, NULL);
         double DiffSec = difftime(End.tv_sec, Begin.tv_sec);
         double DiffMicro = difftime(End.tv_usec, Begin.tv_usec)/1000000;
-        // redirect stdout on the console
-        freopen("/dev/tty", "w", stdout);
         cout << (DiffSec + DiffMicro) << "s\n"; // in sec
     }
 
