@@ -158,7 +158,7 @@ void Context::exec(bool PrintTime) {
     if (PrintTime) {
         gettimeofday(&End, NULL);
         double DiffSec = difftime(End.tv_sec, Begin.tv_sec);
-        double DiffMicro = difftime(End.tv_usec, Begin.tv_usec)/10000000;
+        double DiffMicro = difftime(End.tv_usec, Begin.tv_usec)/1000000;
         // redirect stdout on the console
         freopen("/dev/tty", "w", stdout);
         cout << (DiffSec + DiffMicro) << "s\n"; // in sec
