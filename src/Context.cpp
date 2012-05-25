@@ -4,6 +4,7 @@
 #include <string.h>
 #include <Utils.hpp>
 #include <iostream>
+#include <sys/time.h>
 
 extern "C" {
     #include <ocaml_runtime/config.h>
@@ -130,7 +131,8 @@ void Context::compile() {
     )
 }
 
-void Context::exec() {
+void Context::exec(bool PrintTime) {
+    struct timeval Begin, End;
     auto MainFunc = Mod->MainFunction;
 
     DEBUG(
@@ -140,9 +142,22 @@ void Context::exec() {
         }
     )
 
+
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
     void (*FP)() = (void (*)())(intptr_t)FPtr;
+
+    if (PrintTime) {
+        gettimeofday(&Begin, NULL);
+    }
+
     FP();
+
+    if (PrintTime) {
+        gettimeofday(&End, NULL);
+        double DiffSec = difftime(End.tv_sec, Begin.tv_sec);
+        double DiffMicro = difftime(End.tv_usec, Begin.tv_usec)/1000000;
+        cout << (DiffSec + DiffMicro) << "s\n"; // in sec
+    }
 
     DEBUG(
         void *p = Mod->ExecEngine->getPointerToFunction(Mod->getFunction("printAccu"));
