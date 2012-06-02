@@ -165,11 +165,13 @@ void Context::compile() {
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
 
-    Mod->PM->run(*Mod->TheModule);
-    for (auto& F: Mod->TheModule->getFunctionList()) {
-        Mod->FPM->run(F);
+    if (this->Opt) {
+        Mod->PM->run(*Mod->TheModule);
+        for (auto& F: Mod->TheModule->getFunctionList()) {
+            Mod->FPM->run(F);
+        }
+        Mod->FPM->run(*MainFunc->LlvmFunc);
     }
-    Mod->FPM->run(*MainFunc->LlvmFunc);
 
     DEBUG(
         for (auto FuncP : Mod->Functions)

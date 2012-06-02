@@ -15,6 +15,7 @@ public:
     virtual void generateMod();
     virtual void compile();
     void exec(bool PrintTime);
+    bool Opt = false;
 
 };
 
