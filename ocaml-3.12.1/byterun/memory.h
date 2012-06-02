@@ -29,6 +29,7 @@
 /* </private> */
 #include "misc.h"
 #include "mlvalues.h"
+#include <gc.h>
 
 CAMLextern value caml_alloc_shr (mlsize_t, tag_t);
 CAMLextern void caml_adjust_gc_speed (mlsize_t, mlsize_t);
@@ -98,6 +99,13 @@ int caml_page_table_initialize(mlsize_t bytesize);
 #define DEBUG_clear(result, wosize)
 #endif
 
+#define Alloc_small(result, wosize, tag) do { \
+    result = (value)GC_MALLOC((wosize+1) * sizeof(value)); \
+    result = result + (1*sizeof(value)); \
+    Hd_val(result) = Make_header((wosize), (tag), Caml_black); \
+} while (0)
+
+#if 0
 #define Alloc_small(result, wosize, tag) do{    CAMLassert ((wosize) >= 1); \
                                           CAMLassert ((tag_t) (tag) < 256); \
                                  CAMLassert ((wosize) <= Max_young_wosize); \
@@ -113,6 +121,7 @@ int caml_page_table_initialize(mlsize_t bytesize);
   (result) = Val_hp (caml_young_ptr);                                       \
   DEBUG_clear ((result), (wosize));                                         \
 }while(0)
+#endif
 
 /* You must use [Modify] to change a field of an existing shared block,
    unless you are sure the value being overwritten is not a shared block and

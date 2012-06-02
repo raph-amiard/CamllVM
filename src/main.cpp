@@ -3,6 +3,7 @@
 #include <boost/program_options.hpp>
 #include <Context.hpp>
 #include <Utils.hpp>
+#include <gc.h>
 
 namespace po = boost::program_options;
 using namespace std;
@@ -25,6 +26,8 @@ void usage() {
 int main(int argc, char** argv) {
 
     caml_sys_init(argv[0], argv);
+    GC_INIT();
+    GC_enable_incremental();
 
     int StepToReach = 4;
     int PrintFrom = 0;
