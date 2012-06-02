@@ -76,3 +76,9 @@ void GenModule::Print() {
     MainFunction->Print();
     cout << "}\n";
 }
+
+Function* GenModule::getFunction(string Name) {
+  auto F = TheModule->getFunction(Name);
+  return F;
+}
+

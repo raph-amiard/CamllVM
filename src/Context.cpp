@@ -4,6 +4,7 @@
 #include <string.h>
 #include <Utils.hpp>
 #include <iostream>
+#include <sys/time.h>
 
 extern "C" {
     #include <ocaml_runtime/config.h>
@@ -19,6 +20,9 @@ extern "C" {
     #include <ocaml_runtime/custom.h>
     #include <ocaml_runtime/misc.h>
     #include <ocaml_runtime/fail.h>
+    #include <ocaml_runtime/backtrace.h>
+
+    extern int caml_parser_trace;
 }
 
 
@@ -34,6 +38,48 @@ static uintnat minor_heap_init = Minor_heap_def;
 static uintnat heap_chunk_init = Heap_chunk_def;
 static uintnat heap_size_init = Init_heap_def;
 static uintnat max_stack_init = Max_stack_def;
+
+static void scanmult4 (char *opt, uintnat *var)
+{
+  char mult = ' ';
+  unsigned int val;
+  sscanf (opt, "=%u%c", &val, &mult);
+  sscanf (opt, "=0x%x%c", &val, &mult);
+  switch (mult) {
+  case 'k':   *var = (uintnat) val * 1024; break;
+  case 'M':   *var = (uintnat) val * 1024 * 1024; break;
+  case 'G':   *var = (uintnat) val * 1024 * 1024 * 1024; break;
+  default:    *var = (uintnat) val; break;
+  }
+}
+
+
+static void parse_camlrunparam4(void)
+{
+  char *opt = getenv ("OCAMLRUNPARAM");
+  uintnat p;
+
+  if (opt == NULL) opt = getenv ("CAMLRUNPARAM");
+
+  if (opt != NULL){
+    while (*opt != '\0'){
+      switch (*opt++){
+      case 's': scanmult4 (opt, &minor_heap_init); break;
+      case 'i': scanmult4 (opt, &heap_chunk_init); break;
+      case 'h': scanmult4 (opt, &heap_size_init); break; //major_heap_size
+      case 'l': scanmult4 (opt, &max_stack_init); break;
+      case 'o': scanmult4 (opt, &percent_free_init); break;
+      case 'O': scanmult4 (opt, &max_percent_free_init); break;
+      case 'v': scanmult4 (opt, &caml_verb_gc); break;
+      case 'b': caml_record_backtrace(Val_true); break;
+      case 'p': caml_parser_trace = 1; break;
+      case 'a': scanmult4 (opt, &p); caml_set_allocation_policy (p); break;
+      }
+    }
+  };
+  //fprintf(stderr, "minor_heap_init=%d", (int) minor_heap_init);
+}
+
 
 void Context::init(string _FileName, int EraseFrom, int EraseFirst, int EraseLast) {
 
@@ -56,8 +102,10 @@ void Context::init(string _FileName, int EraseFrom, int EraseFirst, int EraseLas
     caml_read_section_descriptors(Fd, &Trail);
 
     /* Initialize the abstract machine */
+    parse_camlrunparam4();
     caml_init_gc (minor_heap_init, heap_size_init, heap_chunk_init,
                 percent_free_init, max_percent_free_init);
+    
     caml_init_stack (max_stack_init);
     init_atoms();
 
@@ -117,6 +165,14 @@ void Context::compile() {
     auto MainFunc = Mod->MainFunction;
     MainFunc->CodeGen();
 
+    if (this->Opt) {
+        Mod->PM->run(*Mod->TheModule);
+        for (auto& F: Mod->TheModule->getFunctionList()) {
+            Mod->FPM->run(F);
+        }
+        Mod->FPM->run(*MainFunc->LlvmFunc);
+    }
+
     DEBUG(
         for (auto FuncP : Mod->Functions)
             FuncP.second->LlvmFunc->dump();
@@ -124,27 +180,39 @@ void Context::compile() {
     )
 }
 
-void Context::exec() {
+void Context::exec(bool PrintTime) {
+    struct timeval Begin, End;
     auto MainFunc = Mod->MainFunction;
 
-    /*
-    Mod->PM->run(*Mod->TheModule);
-    for (auto& F: Mod->TheModule->getFunctionList()) {
-        Mod->FPM->run(F);
-    }
-    Mod->FPM->run(*MainFunc->LlvmFunc);
-    */
-
     DEBUG(
-        for (auto FuncP : Mod->Functions)
-            FuncP.second->LlvmFunc->dump();
-        MainFunc->LlvmFunc->dump();
+        for (auto FuncP : Mod->Functions) {
+            void *Ptr = Mod->ExecEngine->getPointerToFunction(FuncP.second->LlvmFunc);
+            cout << "Function " << FuncP.second->name() << " : " << Ptr << endl;
+        }
     )
 
+
     void *FPtr = Mod->ExecEngine->getPointerToFunction(MainFunc->LlvmFunc);
-    value (*FP)() = (value (*)())(intptr_t)FPtr;
-    value a = FP();
-    DEBUG(cout << a << endl;)
+    void (*FP)() = (void (*)())(intptr_t)FPtr;
+
+    if (PrintTime) {
+        gettimeofday(&Begin, NULL);
+    }
+
+    FP();
+
+    if (PrintTime) {
+        gettimeofday(&End, NULL);
+        double DiffSec = difftime(End.tv_sec, Begin.tv_sec);
+        double DiffMicro = difftime(End.tv_usec, Begin.tv_usec)/1000000;
+        cout << (DiffSec + DiffMicro) << "s\n"; // in sec
+    }
+
+    DEBUG(
+        void *p = Mod->ExecEngine->getPointerToFunction(Mod->getFunction("printAccu"));
+        void (*fp)() = (void (*)())p;
+        fp();
+    )
 }
 
 #endif

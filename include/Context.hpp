@@ -14,7 +14,8 @@ public:
     void init(std::string FileName, int EraseFrom, int EraseFirst, int EraseLast);
     virtual void generateMod();
     virtual void compile();
-    virtual void exec();
+    void exec(bool PrintTime);
+    bool Opt = false;
 
 };
 

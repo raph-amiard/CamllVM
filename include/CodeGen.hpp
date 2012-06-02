@@ -189,6 +189,8 @@ public:
     llvm::Module *TheModule;
     llvm::IRBuilder<> * Builder;
     llvm::ExecutionEngine* ExecEngine;
+    llvm::Function* getFunction(std::string Name);
+
 
     GenModule();
     void Print(); 
