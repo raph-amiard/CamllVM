@@ -18,7 +18,7 @@ OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule
 all: main
 
 ocaml_runtime: ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
-	cd ${LIBPATH} && make && make libcamlrund.a && rm main.d.o;
+	cd ${LIBPATH} && make libcamlrund.a prims.o && rm main.d.o;
 
 ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h:
 	cd ${OCAMLPATH} && ./configure
