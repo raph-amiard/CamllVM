@@ -7,7 +7,7 @@ fi
 
 output="${1%*.*}.pdf"
 
-pandoc -s -N -H header.tex --bibliography=biblio.bib "$1" -o "$output"
+pandoc -s -N -H header.tex "$1" -o "$output"
 
 echo "'$output' written"
 
