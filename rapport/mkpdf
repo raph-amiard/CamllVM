@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ "$#" -eq 0 ]; then
+    echo "usage: mkpdf <input file>"
+    exit 0
+fi
+
+output="${1%*.*}.pdf"
+
+pandoc -s -N -H header.tex  "$1" -o "$output"
+
+echo "'$output' written"
+
