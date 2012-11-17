@@ -20,7 +20,7 @@ all: main
 ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h: ${OCAMLPATH}
 	cd ${OCAMLPATH} && ./configure
 
-${OBJ}/%.o: ${OCAMLPATH} ${SRC}/%.cpp ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
+${OBJ}/%.o: ${SRC}/%.cpp ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
 	${CC} -c -o $@ $<
 
 ${OCAMLPATH}:
@@ -52,8 +52,9 @@ _mainrelease: $(OBJECTS) ocaml_runtime
 
 
 clean:
-	rm ${OBJ}/* -f;
+	rm ${OBJ}/* -f
+	rm ${BIN}/* -f
 
 cleanall: clean
-	cd ${OCAMLPATH} && make clean;
+	rm ${OCAMLPATH} -rf
 
