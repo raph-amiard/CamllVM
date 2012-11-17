@@ -59,5 +59,6 @@ Here is the performance you can expect from it :
 ### If you like that
 
 Mail me if you are interrested in the project : raph.amiard at gmail dot com
+
 Follow me on twitter for updates : [@notfonk](http://twitter.com/notfonk)
 
