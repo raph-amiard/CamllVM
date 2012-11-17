@@ -17,14 +17,21 @@ OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule
 
 all: main
 
-ocaml_runtime: ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
-	cd ${LIBPATH} && make && make libcamlrun.a && make libcamlrund.a && rm main.d.o && rm main.o;
-
-${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h:
+${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h: ${OCAMLPATH}
 	cd ${OCAMLPATH} && ./configure
 
-${OBJ}/%.o: ${SRC}/%.cpp ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
+${OBJ}/%.o: ${OCAMLPATH} ${SRC}/%.cpp ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
 	${CC} -c -o $@ $<
+
+${OCAMLPATH}:
+	wget -q http://caml.inria.fr/pub/distrib/ocaml-3.12/ocaml-3.12.1.tar.gz
+	tar xf ocaml-3.12.1.tar.gz
+	rm ocaml-3.12.1.tar.gz
+	cd ocaml-3.12.1 && patch -p1 -i ../ocamlpatch/ocaml.patch
+
+ocaml_runtime: ${OCAMLPATH} ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h ${OCAMLPATH}/config/s.h
+	cd ${LIBPATH} && make && make libcamlrun.a && make libcamlrund.a && rm main.d.o && rm main.o;
+
 
 stdlib:
 	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib/CStdLib.c
