@@ -55,3 +55,9 @@ The version on the main trunk is one of such approaches, and the one that works 
 Here is the performance you can expect from it :
 
 ![Z3 benchmarks](http://i.imgur.com/pS7fv.png)
+
+### If you like that
+
+Mail me if you are interrested in the project : raph.amiard at gmail dot com
+Follow me on twitter for updates : [@notfonk](http://twitter.com/notfonk)
+
