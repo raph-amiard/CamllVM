@@ -18,7 +18,7 @@ po::options_description All("All");
 po::positional_options_description PosDesc;
 
 void usage() {
-    cout << "Usage: ocamllvm [options] <input>\n";
+    cout << "Usage: camllvm [options] <input>\n";
     cout << Options << endl;
 }
 
