@@ -16,7 +16,7 @@ for file in `ls $dir/*.ml`; do
 
     opt=`/usr/bin/time -f '%E' "./$file.opt" 2>&1`
     run=`/usr/bin/time -f '%E' ocamlrun a.out 2>&1`
-    z3=`../bin/Z3 -t a.out 2>/dev/null` 
+    ocamllvm=`../bin/ocamllvm -t a.out 2>/dev/null` 
 
 
     echo "$file"
@@ -24,8 +24,8 @@ for file in `ls $dir/*.ml`; do
     echo "$opt" | tail -n 1
     echo -en "run:\t"
     echo "$run" | tail -n 1
-    echo -en "z3:\t"
-    echo "$z3" | tail -n 1
+    echo -en "ocamllvm:\t"
+    echo "$ocamllvm" | tail -n 1
     rm "$file.opt"
 done
 
