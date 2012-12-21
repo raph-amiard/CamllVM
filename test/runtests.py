@@ -8,7 +8,7 @@ except ImportError:
         return txt
 
 PATH = "/".join(os.path.realpath(__file__).split("/")[:-1]) + "/"
-Z3_PATH = "../../bin/Z3"
+CAMLLVM_PATH = "../../bin/camllvm"
 
 test_num = 1
 
@@ -44,10 +44,10 @@ def compile_and_run(file_path):
         options = open(file_path + ".opts").read().split(" ")
     except IOError:
         options = []
-    z3_call_vect = [Z3_PATH, "a.out"] + options
+    camllvm_call_vect = [CAMLLVM_PATH, "a.out"] + options
 
     try:
-        out = subprocess.check_output(z3_call_vect, stderr=subprocess.STDOUT)
+        out = subprocess.check_output(camllvm_call_vect, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError, e:
         test_fail(file_path, "Non zero return code")
         test_print(colored("Output dumped to file test_fail.txt", "red"))

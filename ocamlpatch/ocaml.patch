@@ -1,0 +1,51 @@
+diff -crB ocaml-3.12.1.orig/byterun/startup.c ocaml-3.12.1/byterun/startup.c
+*** ocaml-3.12.1.orig/byterun/startup.c	2010-09-03 18:31:32.000000000 +0200
+--- ocaml-3.12.1/byterun/startup.c	2012-03-09 17:00:40.882643620 +0100
+***************
+*** 69,75 ****
+  
+  /* Initialize the atom table */
+  
+! static void init_atoms(void)
+  {
+    int i;
+    for(i = 0; i < 256; i++) caml_atom_table[i] = Make_header(0, i, Caml_white);
+--- 69,75 ----
+  
+  /* Initialize the atom table */
+  
+! void init_atoms(void)
+  {
+    int i;
+    for(i = 0; i < 256; i++) caml_atom_table[i] = Make_header(0, i, Caml_white);
+***************
+*** 184,190 ****
+  /* Read and return the contents of the section having the given name.
+     Add a terminating 0.  Return NULL if no such section. */
+  
+! static char * read_section(int fd, struct exec_trailer *trail, char *name)
+  {
+    int32 len;
+    char * data;
+--- 184,190 ----
+  /* Read and return the contents of the section having the given name.
+     Add a terminating 0.  Return NULL if no such section. */
+  
+! char * read_section(int fd, struct exec_trailer *trail, char *name)
+  {
+    int32 len;
+    char * data;
+diff -crB ocaml-3.12.1.orig/byterun/startup.h ocaml-3.12.1/byterun/startup.h
+*** ocaml-3.12.1.orig/byterun/startup.h	2004-02-22 16:07:51.000000000 +0100
+--- ocaml-3.12.1/byterun/startup.h	2012-02-29 02:15:42.977283481 +0100
+***************
+*** 35,40 ****
+--- 35,42 ----
+  extern int32 caml_seek_optional_section(int fd, struct exec_trailer *trail,
+                                          char *name);
+  extern int32 caml_seek_section(int fd, struct exec_trailer *trail, char *name);
++ extern char * read_section(int fd, struct exec_trailer *trail, char *name);
++ extern void init_atoms(void);
+  
+  
+  #endif /* CAML_STARTUP_H */

@@ -1,35 +1,66 @@
-Z3 README
-=========
+CamllVM : An LLVM backed runtime for OCaml
+=========================================
 
-This is the readme for the Z3 Project, a Zam to LLVM compiler and (hopefully) runtime.
+CamllVM allows you to run OCaml bytecode with the regular OCaml runtime, and an LLVM backend.
+
+It is quite faster than the regular OCaml interpreter, but a lot slower than ocamlopt, OCaml's native code compiler.
 
 The idea is to reuse ocaml's runtime and builtins, but to plug in an LLVM backed native code generator.
 
-A word of disclaimer
---------------------
+A word of caution
+-----------------
 
-This project is nothing but ideas at the moment, and most of them are not fixed yet. This github space is meant as a discussion space for the time being, and this disclaimer will be removed when runnable and useful code is put in this repo. *For the moment, all code you'll find here is scraps and implementation ideas*
-
-##### UPDATE : The projects now runs ocaml code, and implements a quite large subset of the ZAM instructions ! You can test it at will, even if some things won't work.
+*THIS IS ALPHA SOFTWARE*
+A lot of things don't yet work. If you would be so kind, send me test cases with complete instructions on how to reproduce the case.
 
 Building the project
 --------------------
 
-The default Makefile is configured to use clang, but should work with gcc too.
+### What you need
 
-What does it do for the moment
-------------------------------
+- A recent version of clang and LLVM (post 3.0 for LLVM). 
+The one on debian unstable is working fine, but you can build it too if your distro doesn't provide recent enough packages.
+- gcc (for building the OCaml runtime). OCaml will build with clang if you feel brave enough to edit its makefiles.
+- libboost-program-options
 
-- It uses the ocaml runtime (based in the byterun/ folder of the ocaml distribution) to parse an ocaml bytecode file.
-- Processes the ZAM bytecode to rebuild functions and blocks.
-- Emits and eventually jit compile/run llvm IR for a (yet) limited subset of the ZAM instruction set.
+### How does the build works
+
+CamllVM depends on a *very slightly modified* version of the OCaml runtime, so the first thing that will be done is to get OCaml's sources, patch them, and build this modified version of the runtime.
+Then CamllVM will be built.
+CamllVM is coded in C++, because it is LLVM's language, and more convenient in my opinion regarding use of data structures and such than pure C. It could have been done in OCaml, but it wasn't.
+
+How to use it
+-------------
+
+CamllVM works in the same way ocamlrun does : It takes a bytecode file in, and compiles *and* runs the program.
+There is no option *yet* for AOT compilation, but it shouldn't be too hard to bake in.
+
+So the workflow is something like :
+
+~~~sh
+ocamlc myprogram.ml
+camllvm a.out
+~~~
 
 Testing
 -------
 
 Run "python tests/runtests.py" to run all regression tests
 
-Dependencies
-------------
+### About it
 
-libboost-program-options
+This project is a proof of concept, and a way to explore some ideas regarding compilation of OCaml bytecode.
+The version on the main trunk is one of such approaches, and the one that works the best, but also the simplest and slowest.
+
+Here is the performance you can expect from it :
+
+![camllvm benchmarks](http://i.imgur.com/pS7fv.png)
+
+CamllVM is named "Z3" here, because it was the original name for this project.
+
+### If you like that
+
+Mail me if you are interrested in the project : raph.amiard at gmail dot com
+
+Follow me on twitter for updates : [@notfonk](http://twitter.com/notfonk)
+
