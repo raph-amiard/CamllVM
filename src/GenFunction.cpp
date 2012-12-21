@@ -86,7 +86,7 @@ Function* GenFunction::CodeGen() {
         this->generateApplierFunction();
 
     // Verify if the function is well formed
-    //DEBUG(LlvmFunc->dump();)
+    DEBUG(LlvmFunc->dump();)
     verifyFunction(*LlvmFunc);
 
     return LlvmFunc;

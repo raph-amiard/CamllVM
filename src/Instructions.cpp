@@ -97,8 +97,9 @@ void annotateNodes(vector<ZInstruction*>& Instructions) {
             for (auto Dest : Inst->SwitchEntries)
                 Instructions[Dest]->Annotation = BLOCK_START;
         }
-        if (Inst->OpNum == PUSHTRAP) {
+        if (Inst->isPushTrap()) {
             Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;
+            Instructions[Inst->idx + 1]->Annotation = BLOCK_START;
         } 
         if (Inst->isJumpInst()) {
             Instructions[Inst->getDestIdx()]->Annotation = BLOCK_START;

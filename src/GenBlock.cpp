@@ -105,7 +105,10 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
         int PrevStackPos = n - Stack.size() + StackOffset;
 
         auto It = PrevStackCache.find(PrevStackPos);
+        cout << "IN GETSTACKAT FOR BLOCK " << this->name() << "\n";
         if (It != PrevStackCache.end()) {
+            // The value is in the stack cache, return it
+            cout << "STACK VALUE IS IN CACHE" << endl;
             Ret = It->second;
         } else {
 
@@ -116,6 +119,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
                 throw std::logic_error("Bad stack access !");
             } else if (NbPrevBlocks == 1) {
                 Ret = PrBlocks.front()->_getStackAt(PrevStackPos, StartBlock);
+                cout << "ONLY ONE PREVIOUS BLOCK : " << PrBlocks.front()->name() << endl;
             } else {
                 auto B = Builder->GetInsertBlock();
                 Builder->SetInsertPoint(LlvmBlocks.front());
