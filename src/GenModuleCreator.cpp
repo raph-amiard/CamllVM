@@ -153,7 +153,7 @@ void GenModuleCreator::generateFunction(GenFunction* Function, deque<ZInstructio
 
         CBlock->Instructions.push_back(Inst);
 
-        if (Inst->isJumpInst() || Inst->OpNum == PUSHTRAP)
+        if (Inst->isJumpInst() || Inst->isPushTrap())
             CBlock->setNext(Function->Blocks[Inst->getDestIdx()], true);
 
         if (Inst->isSwitch()) {

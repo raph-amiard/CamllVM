@@ -105,10 +105,10 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
         int PrevStackPos = n - Stack.size() + StackOffset;
 
         auto It = PrevStackCache.find(PrevStackPos);
-        cout << "IN GETSTACKAT FOR BLOCK " << this->name() << "\n";
+        //cout << "IN GETSTACKAT FOR BLOCK " << this->name() << "\n";
         if (It != PrevStackCache.end()) {
             // The value is in the stack cache, return it
-            cout << "STACK VALUE IS IN CACHE" << endl;
+            // cout << "STACK VALUE IS IN CACHE" << endl;
             Ret = It->second;
         } else {
 
@@ -119,7 +119,7 @@ StackValue* GenBlock::_getStackAt(size_t n, GenBlock* StartBlock) {
                 throw std::logic_error("Bad stack access !");
             } else if (NbPrevBlocks == 1) {
                 Ret = PrBlocks.front()->_getStackAt(PrevStackPos, StartBlock);
-                cout << "ONLY ONE PREVIOUS BLOCK : " << PrBlocks.front()->name() << endl;
+                //cout << "ONLY ONE PREVIOUS BLOCK : " << PrBlocks.front()->name() << endl;
             } else {
                 auto B = Builder->GetInsertBlock();
                 Builder->SetInsertPoint(LlvmBlocks.front());
@@ -252,7 +252,7 @@ void GenBlock::genTermInst() {
     Builder->SetInsertPoint(LlvmBlock);
     auto Inst = Instructions.back();
 
-    if (!(Inst->isJumpInst() || Inst->isReturn() || Inst->isSwitch()))
+    if (!(Inst->isJumpInst() || Inst->isReturn() || Inst->isSwitch() || Inst->isPushTrap()))
         Builder->CreateBr(this->NextBlocks.front()->LlvmBlock);
 }
 
@@ -611,22 +611,14 @@ void GenBlock::GenCodeForInst(ZInstruction* Inst) {
             auto Const0 = ConstantInt::get(getGlobalContext(), APInt(32, 0, true));
             auto SetJmpRes = Builder->CreateCall2(SetJmpFunc, JmpBuf, Const0);
             auto BoolVal = Builder->CreateIntCast(SetJmpRes, Type::getInt1Ty(getGlobalContext()), getValType());
-            auto Blocks = addBlock();
-            auto TrapBlock = Function->Blocks[Inst->Args[0]];
-            Builder->CreateCondBr(BoolVal, TrapBlock->LlvmBlocks.front(), Blocks.second);
-
-            Builder->SetInsertPoint(TrapBlock->LlvmBlock);
-            TrapBlock->Accu = Builder->CreateCall(getFunction("getExceptionValue"));
+            Builder->CreateCondBr(BoolVal, BrBlock->LlvmBlock, NoBrBlock->LlvmBlock);
+            Builder->SetInsertPoint(BrBlock->LlvmBlock);
+            BrBlock->Accu = Builder->CreateCall(getFunction("getExceptionValue"));
             Builder->CreateCall(getFunction("removeExceptionContext"));
-
-            Builder->SetInsertPoint(Blocks.second);
-            auto AccuSv = Accu;
-            Accu = ConstInt(Val_unit);
-            for (int i=0;i<4;i++) push(false);
-            Accu = AccuSv;
+            for (int i=0;i<4;i++) NoBrBlock->push(false);
             break;
-
         }
+
         case POPTRAP: {
             //UnwindBlocks.pop_front();
             Builder->CreateCall(getFunction("removeExceptionContext"));
