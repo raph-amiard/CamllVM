@@ -239,7 +239,7 @@ BasicBlock* GenBlock::CodeGen() {
     // Create the block and generate instruction's code
     Builder->SetInsertPoint(LlvmBlock);
 
-    //DEBUG(debug(ConstInt(this->Id));)
+    DEBUG(debug(ConstInt(this->Id));)
 
     for (auto Inst : this->Instructions)
         GenCodeForInst(Inst);

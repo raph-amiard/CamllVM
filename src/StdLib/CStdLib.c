@@ -254,7 +254,8 @@ value getBlockSize(value Block) { return Wosize_val(Block); }
 
 value getField(value Block, value Idx) { 
     IFDBG(printf("Getfield : %p\n", (void*)Field(Block, Idx));)
-    return Field(Block, Idx); 
+    value ret = Field(Block, Idx); 
+    return ret;
 }
 
 void setField(value Field, value Idx, value NewVal) {
@@ -268,19 +269,19 @@ value getAtom(value Idx) {
 
 value makeBlock1(value tag, value Val1) {
     //printf("INTO MAKEBLOCK1\n");
-      value block;
-      Alloc_small(block, 1, (tag_t)tag);
-      Field(block, 0) = Val1;
-      return block;
+    value block;
+    Alloc_small(block, 1, (tag_t)tag);
+    Field(block, 0) = Val1;
+    return block;
 }
 
 value makeBlock2(value tag, value Val1, value Val2) {
     //printf("INTO MAKEBLOCK2\n");
-      value block;
-      Alloc_small(block, 2, (tag_t)tag);
-      Field(block, 0) = Val1;
-      Field(block, 1) = Val2;
-      return block;
+    value block;
+    Alloc_small(block, 2, (tag_t)tag);
+    Field(block, 0) = Val1;
+    Field(block, 1) = Val2;
+    return block;
 }
 
 value makeBlock3(value tag, value Val1, value Val2, value Val3) {
