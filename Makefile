@@ -13,7 +13,7 @@ LIBS= -lboost_program_options
 CC=clang++ ${CCFLAGS} `llvm-config --cppflags` 
 CSTDLIBCC=clang -O3 -Wall -Wextra -Wno-unused-parameter -I${CAMLLVMINCLUDE}
 
-OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule.o $(OBJ)/GenModuleCreator.o $(OBJ)/Instructions.o $(OBJ)/SimpleContext.o $(OBJ)/main.o $(OBJ)/Utils.o
+OBJECTS=$(OBJ)/Context.o $(OBJ)/GenBlock.o $(OBJ)/GenFunction.o $(OBJ)/GenModule.o $(OBJ)/GenModuleCreator.o $(OBJ)/Instructions.o $(OBJ)/main.o $(OBJ)/Utils.o
 
 all: main
 
@@ -35,7 +35,6 @@ ocaml_runtime: ${OCAMLPATH} ${OCAMLPATH}/config/Makefile ${OCAMLPATH}/config/m.h
 
 stdlib:
 	${CSTDLIBCC} -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib/CStdLib.c
-	# ${CSTDLIBCC} -std=c++0x -S -emit-llvm -o ${BIN}/ZamSimpleInterpreter.ll ${SRC}/zsi/ZamSimpleInterpreter.cpp
 
 dbgstdlib:
 	${CSTDLIBCC} -D STDDBG -S -emit-llvm -o ${BIN}/StdLib.ll ${SRC}/StdLib/CStdLib.c

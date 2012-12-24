@@ -208,11 +208,6 @@ void Context::exec(bool PrintTime) {
         cout << (DiffSec + DiffMicro) << "s\n"; // in sec
     }
 
-    DEBUG(
-        void *p = Mod->ExecEngine->getPointerToFunction(Mod->getFunction("printAccu"));
-        void (*fp)() = (void (*)())p;
-        fp();
-    )
 }
 
 #endif
